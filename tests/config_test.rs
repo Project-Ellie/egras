@@ -1,4 +1,5 @@
 use egras::config::AppConfig;
+use serial_test::serial;
 
 fn set_required_env() {
     std::env::set_var("EGRAS_DATABASE_URL", "postgres://e:e@localhost/e");
@@ -6,6 +7,7 @@ fn set_required_env() {
 }
 
 #[test]
+#[serial]
 fn loads_with_defaults() {
     set_required_env();
     let cfg = AppConfig::from_env().expect("config loads");
@@ -16,6 +18,7 @@ fn loads_with_defaults() {
 }
 
 #[test]
+#[serial]
 fn rejects_short_jwt_secret() {
     std::env::set_var("EGRAS_DATABASE_URL", "postgres://e:e@localhost/e");
     std::env::set_var("EGRAS_JWT_SECRET", "short");
