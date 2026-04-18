@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::audit::model::AuditEvent;
 use crate::audit::persistence::{AuditRepository, AuditRepositoryPg};
-use crate::audit::service::{AuditRecorder, ListAuditEventsImpl, ListAuditEvents, RecorderError};
+use crate::audit::service::{AuditRecorder, ListAuditEvents, ListAuditEventsImpl, RecorderError};
 use crate::auth::jwt::encode_access_token;
 use crate::db::run_migrations;
 
@@ -36,7 +36,10 @@ impl TestPool {
         let url = format!("postgres://egras:egras@127.0.0.1:{host_port}/egras_test");
         let pool = PgPool::connect(&url).await.expect("connect pg");
         run_migrations(&pool).await.expect("migrations");
-        Self { pool, _container: container }
+        Self {
+            pool,
+            _container: container,
+        }
     }
 }
 
@@ -50,7 +53,10 @@ pub struct BlockingAuditRecorder {
 
 impl BlockingAuditRecorder {
     pub fn new(repo: Arc<dyn AuditRepository>) -> Self {
-        Self { repo, captured: Arc::new(Mutex::new(Vec::new())) }
+        Self {
+            repo,
+            captured: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 }
 
@@ -68,8 +74,7 @@ impl AuditRecorder for BlockingAuditRecorder {
 
 /// Issue a JWT for tests. Caller owns the permission loading path — see `MockAppStateBuilder`.
 pub fn mint_jwt(secret: &str, issuer: &str, user_id: Uuid, org_id: Uuid, ttl_secs: i64) -> String {
-    encode_access_token(secret, issuer, user_id, org_id, ttl_secs)
-        .expect("mint_jwt failed")
+    encode_access_token(secret, issuer, user_id, org_id, ttl_secs).expect("mint_jwt failed")
 }
 
 /// Builder that produces an `AppState` wired with audit infra for tests. Plan 2
@@ -82,7 +87,11 @@ pub struct MockAppStateBuilder {
 
 impl MockAppStateBuilder {
     pub fn new(pool: PgPool) -> Self {
-        Self { pool, audit_recorder: None, list_audit_events: None }
+        Self {
+            pool,
+            audit_recorder: None,
+            list_audit_events: None,
+        }
     }
 
     pub fn with_blocking_audit(mut self) -> Self {
@@ -93,11 +102,13 @@ impl MockAppStateBuilder {
     }
 
     pub fn audit_recorder(mut self, rec: Arc<dyn AuditRecorder>) -> Self {
-        self.audit_recorder = Some(rec); self
+        self.audit_recorder = Some(rec);
+        self
     }
 
     pub fn list_audit_events(mut self, svc: Arc<dyn ListAuditEvents>) -> Self {
-        self.list_audit_events = Some(svc); self
+        self.list_audit_events = Some(svc);
+        self
     }
 
     pub fn build(self) -> AppState {
@@ -121,22 +132,34 @@ impl TestApp {
     pub async fn spawn(pool: PgPool, cfg: crate::config::AppConfig) -> Self {
         let (router, audit_handle) = crate::build_app(pool, cfg).await.expect("build_app");
 
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("bind");
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind");
         let addr = listener.local_addr().expect("addr");
         let (tx, rx) = tokio::sync::oneshot::channel::<()>();
         let base_url = format!("http://{addr}");
 
         let handle = tokio::spawn(async move {
-            let server = axum::serve(listener, router).with_graceful_shutdown(async move { rx.await.ok(); });
+            let server = axum::serve(listener, router).with_graceful_shutdown(async move {
+                rx.await.ok();
+            });
             let _ = server.await;
             audit_handle.shutdown().await;
         });
 
-        Self { base_url, shutdown: Some(tx), handle: Some(handle) }
+        Self {
+            base_url,
+            shutdown: Some(tx),
+            handle: Some(handle),
+        }
     }
 
     pub async fn stop(mut self) {
-        if let Some(tx) = self.shutdown.take() { let _ = tx.send(()); }
-        if let Some(h) = self.handle.take() { let _ = h.await; }
+        if let Some(tx) = self.shutdown.take() {
+            let _ = tx.send(());
+        }
+        if let Some(h) = self.handle.take() {
+            let _ = h.await;
+        }
     }
 }

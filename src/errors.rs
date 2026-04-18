@@ -48,7 +48,9 @@ impl ErrorSlug {
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("validation failed")]
-    Validation { errors: HashMap<String, Vec<String>> },
+    Validation {
+        errors: HashMap<String, Vec<String>>,
+    },
 
     #[error("unauthenticated: {reason}")]
     Unauthenticated { reason: String },
@@ -154,7 +156,11 @@ impl IntoResponse for AppError {
         let slug = self.slug();
         let title = self.title();
         let detail = self.detail();
-        let errors_ref = if let AppError::Validation { errors } = &self { Some(errors) } else { None };
+        let errors_ref = if let AppError::Validation { errors } = &self {
+            Some(errors)
+        } else {
+            None
+        };
 
         // Log internal errors with full chain before we drop the error.
         if let AppError::Internal(err) = &self {

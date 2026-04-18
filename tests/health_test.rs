@@ -28,7 +28,9 @@ async fn health_returns_ok() {
     let tp = TestPool::fresh().await;
     let app = TestApp::spawn(tp.pool.clone(), test_config()).await;
 
-    let resp = reqwest::get(format!("{}/health", app.base_url)).await.unwrap();
+    let resp = reqwest::get(format!("{}/health", app.base_url))
+        .await
+        .unwrap();
     assert_eq!(resp.status(), 200);
     let v: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(v["status"], "ok");
@@ -41,7 +43,9 @@ async fn ready_returns_ok_when_db_reachable() {
     let tp = TestPool::fresh().await;
     let app = TestApp::spawn(tp.pool.clone(), test_config()).await;
 
-    let resp = reqwest::get(format!("{}/ready", app.base_url)).await.unwrap();
+    let resp = reqwest::get(format!("{}/ready", app.base_url))
+        .await
+        .unwrap();
     assert_eq!(resp.status(), 200);
     let v: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(v["status"], "ready");
@@ -52,18 +56,24 @@ async fn ready_returns_ok_when_db_reachable() {
 #[tokio::test]
 async fn migration_0005_seeded_operator_org() {
     let tp = TestPool::fresh().await;
-    let row: (String,) = sqlx::query_as(
-        "SELECT name FROM organisations WHERE is_operator = TRUE"
-    ).fetch_one(&tp.pool).await.unwrap();
+    let row: (String,) = sqlx::query_as("SELECT name FROM organisations WHERE is_operator = TRUE")
+        .fetch_one(&tp.pool)
+        .await
+        .unwrap();
     assert_eq!(row.0, "operator");
 }
 
 #[tokio::test]
 async fn migration_0005_has_all_built_in_roles() {
     let tp = TestPool::fresh().await;
-    let rows: Vec<(String,)> = sqlx::query_as(
-        "SELECT code FROM roles WHERE is_builtin = TRUE ORDER BY code"
-    ).fetch_all(&tp.pool).await.unwrap();
+    let rows: Vec<(String,)> =
+        sqlx::query_as("SELECT code FROM roles WHERE is_builtin = TRUE ORDER BY code")
+            .fetch_all(&tp.pool)
+            .await
+            .unwrap();
     let codes: Vec<String> = rows.into_iter().map(|r| r.0).collect();
-    assert_eq!(codes, vec!["operator_admin", "org_admin", "org_member", "org_owner"]);
+    assert_eq!(
+        codes,
+        vec!["operator_admin", "org_admin", "org_member", "org_owner"]
+    );
 }

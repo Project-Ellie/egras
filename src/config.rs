@@ -31,17 +31,39 @@ pub struct AppConfig {
     pub audit_retry_backoff_ms_initial: u64,
 }
 
-fn default_db_max() -> u32 { 10 }
-fn default_bind() -> String { "0.0.0.0:8080".into() }
-fn default_jwt_ttl() -> i64 { 3600 }
-fn default_jwt_iss() -> String { "egras".into() }
-fn default_log_level() -> String { "info".into() }
-fn default_log_format() -> String { "json".into() }
-fn default_reset_ttl() -> i64 { 3600 }
-fn default_operator_name() -> String { "operator".into() }
-fn default_audit_capacity() -> usize { 4096 }
-fn default_audit_retries() -> u32 { 3 }
-fn default_audit_backoff() -> u64 { 100 }
+fn default_db_max() -> u32 {
+    10
+}
+fn default_bind() -> String {
+    "0.0.0.0:8080".into()
+}
+fn default_jwt_ttl() -> i64 {
+    3600
+}
+fn default_jwt_iss() -> String {
+    "egras".into()
+}
+fn default_log_level() -> String {
+    "info".into()
+}
+fn default_log_format() -> String {
+    "json".into()
+}
+fn default_reset_ttl() -> i64 {
+    3600
+}
+fn default_operator_name() -> String {
+    "operator".into()
+}
+fn default_audit_capacity() -> usize {
+    4096
+}
+fn default_audit_retries() -> u32 {
+    3
+}
+fn default_audit_backoff() -> u64 {
+    100
+}
 
 impl AppConfig {
     pub fn from_env() -> anyhow::Result<Self> {
@@ -55,10 +77,16 @@ impl AppConfig {
 
     fn validate(&self) -> anyhow::Result<()> {
         if self.jwt_secret.len() < 32 {
-            anyhow::bail!("EGRAS_JWT_SECRET must be at least 32 bytes (got {})", self.jwt_secret.len());
+            anyhow::bail!(
+                "EGRAS_JWT_SECRET must be at least 32 bytes (got {})",
+                self.jwt_secret.len()
+            );
         }
         if !["json", "pretty"].contains(&self.log_format.as_str()) {
-            anyhow::bail!("EGRAS_LOG_FORMAT must be 'json' or 'pretty' (got {})", self.log_format);
+            anyhow::bail!(
+                "EGRAS_LOG_FORMAT must be 'json' or 'pretty' (got {})",
+                self.log_format
+            );
         }
         Ok(())
     }

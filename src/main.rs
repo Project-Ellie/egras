@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 use egras::config::AppConfig;
 
@@ -16,10 +16,14 @@ enum Commands {
     Serve,
     /// Seed the first operator admin user.
     SeedAdmin {
-        #[arg(long)] email: String,
-        #[arg(long)] username: String,
-        #[arg(long)] password: String,
-        #[arg(long, default_value = "operator_admin")] role: String,
+        #[arg(long)]
+        email: String,
+        #[arg(long)]
+        username: String,
+        #[arg(long)]
+        password: String,
+        #[arg(long, default_value = "operator_admin")]
+        role: String,
     },
     /// Dump OpenAPI 3.1 JSON to stdout.
     DumpOpenapi,
@@ -69,9 +73,8 @@ async fn run_serve(cfg: AppConfig) -> anyhow::Result<()> {
         };
         #[cfg(unix)]
         let term = async {
-            let mut s = tokio::signal::unix::signal(
-                tokio::signal::unix::SignalKind::terminate(),
-            ).expect("install SIGTERM handler");
+            let mut s = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .expect("install SIGTERM handler");
             s.recv().await;
         };
         #[cfg(not(unix))]

@@ -22,9 +22,14 @@ async fn returns_channel_full_when_buffer_exhausted() {
     let rec = ChannelAuditRecorder::new(tx);
 
     // First send fills the buffer.
-    rec.record(AuditEvent::login_success(Uuid::now_v7(), Uuid::now_v7())).await.unwrap();
+    rec.record(AuditEvent::login_success(Uuid::now_v7(), Uuid::now_v7()))
+        .await
+        .unwrap();
     // Second send returns ChannelFull.
-    let err = rec.record(AuditEvent::login_success(Uuid::now_v7(), Uuid::now_v7())).await.unwrap_err();
+    let err = rec
+        .record(AuditEvent::login_success(Uuid::now_v7(), Uuid::now_v7()))
+        .await
+        .unwrap_err();
     assert!(matches!(err, RecorderError::ChannelFull));
 }
 
@@ -33,7 +38,9 @@ async fn returns_closed_after_receiver_drop() {
     let (tx, rx) = mpsc::channel(1);
     drop(rx);
     let rec = ChannelAuditRecorder::new(tx);
-    let err = rec.record(AuditEvent::login_success(Uuid::now_v7(), Uuid::now_v7()))
-        .await.unwrap_err();
+    let err = rec
+        .record(AuditEvent::login_success(Uuid::now_v7(), Uuid::now_v7()))
+        .await
+        .unwrap_err();
     assert!(matches!(err, RecorderError::Closed));
 }

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use egras::testing::mint_jwt;
 use uuid::Uuid;
 

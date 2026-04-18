@@ -14,7 +14,9 @@ pub struct PermissionSet {
 
 impl PermissionSet {
     pub fn from_codes<I: IntoIterator<Item = String>>(codes: I) -> Self {
-        Self { codes: codes.into_iter().collect() }
+        Self {
+            codes: codes.into_iter().collect(),
+        }
     }
 
     pub fn has(&self, code: &str) -> bool {
@@ -69,13 +71,18 @@ where
 
 /// Call from a handler: `require_permission(&parts, "tenants.members.add")?;`
 pub fn require_permission(parts: &Parts, code: &'static str) -> Result<(), AppError> {
-    let set = parts.extensions.get::<PermissionSet>().ok_or_else(|| {
-        AppError::Unauthenticated { reason: "no_permission_set".into() }
-    })?;
+    let set = parts
+        .extensions
+        .get::<PermissionSet>()
+        .ok_or_else(|| AppError::Unauthenticated {
+            reason: "no_permission_set".into(),
+        })?;
     if set.has(code) {
         Ok(())
     } else {
-        Err(AppError::PermissionDenied { code: code.to_string() })
+        Err(AppError::PermissionDenied {
+            code: code.to_string(),
+        })
     }
 }
 
@@ -84,18 +91,26 @@ pub fn require_permission(parts: &Parts, code: &'static str) -> Result<(), AppEr
 /// If the caller has `*.manage_all` or `audit.read_all`, they may operate on any org;
 /// otherwise mismatched `organisation_id` → 404 (via `AppError::NotFound`).
 pub fn authorise_org(parts: &Parts, organisation_id: Uuid) -> Result<(), AppError> {
-    let claims = parts.extensions.get::<Claims>().ok_or_else(|| {
-        AppError::Unauthenticated { reason: "no_claims".into() }
-    })?;
-    let set = parts.extensions.get::<PermissionSet>().ok_or_else(|| {
-        AppError::Unauthenticated { reason: "no_permission_set".into() }
-    })?;
+    let claims = parts
+        .extensions
+        .get::<Claims>()
+        .ok_or_else(|| AppError::Unauthenticated {
+            reason: "no_claims".into(),
+        })?;
+    let set = parts
+        .extensions
+        .get::<PermissionSet>()
+        .ok_or_else(|| AppError::Unauthenticated {
+            reason: "no_permission_set".into(),
+        })?;
     if set.is_operator_over_tenants() || set.is_operator_over_users() || set.is_audit_read_all() {
         return Ok(());
     }
     if claims.org == organisation_id {
         Ok(())
     } else {
-        Err(AppError::NotFound { resource: "organisation".into() })
+        Err(AppError::NotFound {
+            resource: "organisation".into(),
+        })
     }
 }

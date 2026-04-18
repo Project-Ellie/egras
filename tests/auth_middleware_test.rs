@@ -1,6 +1,11 @@
-use axum::{body::Body, http::{Request, StatusCode}, Router, routing::get};
-use egras::auth::middleware::AuthLayer;
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+    routing::get,
+    Router,
+};
 use egras::auth::jwt::{encode_access_token, Claims};
+use egras::auth::middleware::AuthLayer;
 use egras::auth::permissions::PermissionSet;
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -56,7 +61,8 @@ async fn rejects_bad_token() {
 async fn accepts_valid_token_and_injects_extensions() {
     let app = router_with_static_permissions();
     let secret = "a".repeat(64);
-    let token = encode_access_token(&secret, "egras", Uuid::now_v7(), Uuid::now_v7(), 3600).unwrap();
+    let token =
+        encode_access_token(&secret, "egras", Uuid::now_v7(), Uuid::now_v7(), 3600).unwrap();
     let resp = app
         .oneshot(
             Request::builder()
@@ -68,7 +74,9 @@ async fn accepts_valid_token_and_injects_extensions() {
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
-    let body = axum::body::to_bytes(resp.into_body(), 64 * 1024).await.unwrap();
+    let body = axum::body::to_bytes(resp.into_body(), 64 * 1024)
+        .await
+        .unwrap();
     let s = String::from_utf8(body.to_vec()).unwrap();
     assert!(s.contains("tenants.read"));
     assert!(s.contains("tenants.members.list"));

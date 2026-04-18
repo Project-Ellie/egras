@@ -1,25 +1,27 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use sqlx::PgPool;
 use sqlx::types::ipnetwork::IpNetwork;
+use sqlx::PgPool;
 use std::str::FromStr;
-use uuid::Uuid;
 
-use crate::audit::model::{AuditCategory, AuditEvent, Outcome};
 use super::{AuditCursor, AuditQueryFilter, AuditQueryPage, AuditRepository};
+use crate::audit::model::{AuditCategory, AuditEvent, Outcome};
 
 pub struct AuditRepositoryPg {
     pool: PgPool,
 }
 
 impl AuditRepositoryPg {
-    pub fn new(pool: PgPool) -> Self { Self { pool } }
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
 }
 
 #[async_trait]
 impl AuditRepository for AuditRepositoryPg {
     async fn insert(&self, e: &AuditEvent) -> anyhow::Result<()> {
-        let ip: Option<IpNetwork> = e.ip_address.as_deref()
+        let ip: Option<IpNetwork> = e
+            .ip_address
+            .as_deref()
             .and_then(|s| IpNetwork::from_str(s).ok());
 
         sqlx::query(
@@ -71,29 +73,39 @@ impl AuditRepository for AuditRepositoryPg {
         );
 
         if let Some(org) = f.organisation_id {
-            qb.push(" AND target_organisation_id = "); qb.push_bind(org);
+            qb.push(" AND target_organisation_id = ");
+            qb.push_bind(org);
         }
         if let Some(actor) = f.actor_user_id {
-            qb.push(" AND actor_user_id = "); qb.push_bind(actor);
+            qb.push(" AND actor_user_id = ");
+            qb.push_bind(actor);
         }
         if let Some(ref et) = f.event_type {
-            qb.push(" AND event_type = "); qb.push_bind(et);
+            qb.push(" AND event_type = ");
+            qb.push_bind(et);
         }
         if let Some(ref cat) = f.category {
-            qb.push(" AND category = "); qb.push_bind(cat);
+            qb.push(" AND category = ");
+            qb.push_bind(cat);
         }
         if let Some(ref out) = f.outcome {
-            qb.push(" AND outcome = "); qb.push_bind(out);
+            qb.push(" AND outcome = ");
+            qb.push_bind(out);
         }
         if let Some(from) = f.from {
-            qb.push(" AND occurred_at >= "); qb.push_bind(from);
+            qb.push(" AND occurred_at >= ");
+            qb.push_bind(from);
         }
         if let Some(to) = f.to {
-            qb.push(" AND occurred_at <= "); qb.push_bind(to);
+            qb.push(" AND occurred_at <= ");
+            qb.push_bind(to);
         }
         if let Some(ref c) = f.cursor {
             qb.push(" AND (occurred_at, id) < (");
-            qb.push_bind(c.occurred_at).push(", ").push_bind(c.id).push(")");
+            qb.push_bind(c.occurred_at)
+                .push(", ")
+                .push_bind(c.id)
+                .push(")");
         }
 
         qb.push(" ORDER BY occurred_at DESC, id DESC LIMIT ");
@@ -105,7 +117,7 @@ impl AuditRepository for AuditRepositoryPg {
         for row in rows.iter().take(f.limit as usize) {
             use sqlx::Row;
             let category_str: String = row.try_get("category")?;
-            let outcome_str: String   = row.try_get("outcome")?;
+            let outcome_str: String = row.try_get("outcome")?;
             items.push(AuditEvent {
                 id: row.try_get("id")?,
                 occurred_at: row.try_get("occurred_at")?,
@@ -128,7 +140,10 @@ impl AuditRepository for AuditRepositoryPg {
         }
 
         let next_cursor = if rows.len() as i64 > f.limit {
-            items.last().map(|last| AuditCursor { occurred_at: last.occurred_at, id: last.id })
+            items.last().map(|last| AuditCursor {
+                occurred_at: last.occurred_at,
+                id: last.id,
+            })
         } else {
             None
         };

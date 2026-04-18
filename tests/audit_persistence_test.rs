@@ -15,7 +15,10 @@ async fn insert_then_list_roundtrip() {
     repo.insert(&e).await.unwrap();
 
     let page = repo
-        .list_events(&AuditQueryFilter { limit: 10, ..Default::default() })
+        .list_events(&AuditQueryFilter {
+            limit: 10,
+            ..Default::default()
+        })
         .await
         .unwrap();
     assert_eq!(page.items.len(), 1);
@@ -31,14 +34,21 @@ async fn filter_by_event_type() {
 
     let actor = Uuid::now_v7();
     let org = Uuid::now_v7();
-    repo.insert(&AuditEvent::login_success(actor, org)).await.unwrap();
-    repo.insert(&AuditEvent::login_failed("invalid_credentials", "bob")).await.unwrap();
+    repo.insert(&AuditEvent::login_success(actor, org))
+        .await
+        .unwrap();
+    repo.insert(&AuditEvent::login_failed("invalid_credentials", "bob"))
+        .await
+        .unwrap();
 
-    let page = repo.list_events(&AuditQueryFilter {
-        event_type: Some("login.failed".into()),
-        limit: 10,
-        ..Default::default()
-    }).await.unwrap();
+    let page = repo
+        .list_events(&AuditQueryFilter {
+            event_type: Some("login.failed".into()),
+            limit: 10,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     assert_eq!(page.items.len(), 1);
     assert_eq!(page.items[0].event_type, "login.failed");
 }
@@ -55,22 +65,34 @@ async fn cursor_pagination_terminates() {
         repo.insert(&e).await.unwrap();
     }
 
-    let first = repo.list_events(&AuditQueryFilter { limit: 2, ..Default::default() }).await.unwrap();
+    let first = repo
+        .list_events(&AuditQueryFilter {
+            limit: 2,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     assert_eq!(first.items.len(), 2);
     assert!(first.next_cursor.is_some());
 
-    let second = repo.list_events(&AuditQueryFilter {
-        limit: 2,
-        cursor: first.next_cursor.clone(),
-        ..Default::default()
-    }).await.unwrap();
+    let second = repo
+        .list_events(&AuditQueryFilter {
+            limit: 2,
+            cursor: first.next_cursor.clone(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     assert_eq!(second.items.len(), 2);
 
-    let third = repo.list_events(&AuditQueryFilter {
-        limit: 2,
-        cursor: second.next_cursor.clone(),
-        ..Default::default()
-    }).await.unwrap();
+    let third = repo
+        .list_events(&AuditQueryFilter {
+            limit: 2,
+            cursor: second.next_cursor.clone(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     assert_eq!(third.items.len(), 1);
     assert!(third.next_cursor.is_none());
 }

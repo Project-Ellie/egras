@@ -46,7 +46,9 @@ pub struct ListAuditEventsImpl {
 }
 
 impl ListAuditEventsImpl {
-    pub fn new(repo: Arc<dyn AuditRepository>) -> Self { Self { repo } }
+    pub fn new(repo: Arc<dyn AuditRepository>) -> Self {
+        Self { repo }
+    }
 }
 
 #[async_trait]
@@ -66,16 +68,26 @@ impl ListAuditEvents for ListAuditEventsImpl {
             match req.organisation_id {
                 None => Some(caller_org),
                 Some(o) if o == caller_org => Some(o),
-                Some(_) => return Err(AppError::NotFound { resource: "organisation".into() }),
+                Some(_) => {
+                    return Err(AppError::NotFound {
+                        resource: "organisation".into(),
+                    })
+                }
             }
         } else {
-            return Err(AppError::PermissionDenied { code: "audit.read_own_org".into() });
+            return Err(AppError::PermissionDenied {
+                code: "audit.read_own_org".into(),
+            });
         };
 
         let limit = req.limit.unwrap_or(100).clamp(1, 200);
         let cursor = match req.cursor.as_deref() {
-            Some(s) => Some(AuditCursor::decode(s).map_err(|_| AppError::Validation {
-                errors: [("cursor".to_string(), vec!["invalid".to_string()])].into_iter().collect(),
+            Some(s) => Some(AuditCursor::decode(s).map_err(|_| {
+                AppError::Validation {
+                    errors: [("cursor".to_string(), vec!["invalid".to_string()])]
+                        .into_iter()
+                        .collect(),
+                }
             })?),
             None => None,
         };
@@ -92,7 +104,11 @@ impl ListAuditEvents for ListAuditEventsImpl {
             limit,
         };
 
-        let page = self.repo.list_events(&filter).await.map_err(AppError::Internal)?;
+        let page = self
+            .repo
+            .list_events(&filter)
+            .await
+            .map_err(AppError::Internal)?;
         Ok(ListAuditEventsResponse {
             items: page.items,
             next_cursor: page.next_cursor.map(|c| c.encode()),

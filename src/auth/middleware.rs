@@ -1,7 +1,16 @@
-use std::{future::Future, pin::Pin, sync::Arc, task::{Context, Poll}};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+};
 
 use async_trait::async_trait;
-use axum::{body::Body, http::{Request, Response, StatusCode, header}, response::IntoResponse};
+use axum::{
+    body::Body,
+    http::{header, Request, Response, StatusCode},
+    response::IntoResponse,
+};
 use sqlx::PgPool;
 use tower::{Layer, Service};
 use uuid::Uuid;
@@ -30,7 +39,9 @@ impl PermissionLoader {
     }
 
     pub fn static_codes(codes: Vec<String>) -> Self {
-        Self::new(StaticPermissionLoader { codes: Arc::new(codes) })
+        Self::new(StaticPermissionLoader {
+            codes: Arc::new(codes),
+        })
     }
 
     pub async fn load(&self, user: Uuid, org: Uuid) -> anyhow::Result<Vec<String>> {
@@ -38,7 +49,9 @@ impl PermissionLoader {
     }
 }
 
-pub struct PgPermissionLoader { pool: PgPool }
+pub struct PgPermissionLoader {
+    pool: PgPool,
+}
 
 #[async_trait]
 impl PermissionLoaderStrategy for PgPermissionLoader {
@@ -60,7 +73,9 @@ impl PermissionLoaderStrategy for PgPermissionLoader {
     }
 }
 
-pub struct StaticPermissionLoader { codes: Arc<Vec<String>> }
+pub struct StaticPermissionLoader {
+    codes: Arc<Vec<String>>,
+}
 
 #[async_trait]
 impl PermissionLoaderStrategy for StaticPermissionLoader {
@@ -78,14 +93,23 @@ pub struct AuthLayer {
 
 impl AuthLayer {
     pub fn new(secret: String, issuer: String, loader: PermissionLoader) -> Self {
-        Self { secret: Arc::new(secret), issuer: Arc::new(issuer), loader }
+        Self {
+            secret: Arc::new(secret),
+            issuer: Arc::new(issuer),
+            loader,
+        }
     }
 }
 
 impl<S> Layer<S> for AuthLayer {
     type Service = AuthService<S>;
     fn layer(&self, inner: S) -> Self::Service {
-        AuthService { inner, secret: self.secret.clone(), issuer: self.issuer.clone(), loader: self.loader.clone() }
+        AuthService {
+            inner,
+            secret: self.secret.clone(),
+            issuer: self.issuer.clone(),
+            loader: self.loader.clone(),
+        }
     }
 }
 
@@ -119,11 +143,17 @@ where
 
         Box::pin(async move {
             // Extract bearer token
-            let token = match req.headers().get(header::AUTHORIZATION).and_then(|v| v.to_str().ok()) {
+            let token = match req
+                .headers()
+                .get(header::AUTHORIZATION)
+                .and_then(|v| v.to_str().ok())
+            {
                 Some(h) if h.starts_with("Bearer ") => h["Bearer ".len()..].to_string(),
                 _ => {
-                    return Ok(AppError::Unauthenticated { reason: "missing_bearer".into() }
-                        .into_response());
+                    return Ok(AppError::Unauthenticated {
+                        reason: "missing_bearer".into(),
+                    }
+                    .into_response());
                 }
             };
 
@@ -131,8 +161,10 @@ where
             let claims = match decode_access_token(&secret, &issuer, &token) {
                 Ok(c) => c,
                 Err(_) => {
-                    return Ok(AppError::Unauthenticated { reason: "invalid_token".into() }
-                        .into_response());
+                    return Ok(AppError::Unauthenticated {
+                        reason: "invalid_token".into(),
+                    }
+                    .into_response());
                 }
             };
 
@@ -141,7 +173,9 @@ where
                 Ok(c) => c,
                 Err(err) => {
                     tracing::error!(error = %err, "permission loader failed");
-                    return Ok((StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response());
+                    return Ok(
+                        (StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response()
+                    );
                 }
             };
             let perms = PermissionSet::from_codes(codes);

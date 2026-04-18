@@ -24,7 +24,9 @@ pub struct ChannelAuditRecorder {
 }
 
 impl ChannelAuditRecorder {
-    pub fn new(tx: Sender<AuditEvent>) -> Self { Self { tx } }
+    pub fn new(tx: Sender<AuditEvent>) -> Self {
+        Self { tx }
+    }
 }
 
 #[async_trait]

@@ -34,7 +34,12 @@ impl AuditWorker {
         max_retries: u32,
         backoff_initial_ms: u64,
     ) -> Self {
-        Self { rx, repo, max_retries, backoff_initial_ms }
+        Self {
+            rx,
+            repo,
+            max_retries,
+            backoff_initial_ms,
+        }
     }
 
     pub fn spawn(self) -> AuditWorkerHandle {

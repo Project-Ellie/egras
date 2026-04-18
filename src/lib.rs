@@ -38,7 +38,8 @@ pub async fn build_app(
         audit_repo.clone(),
         cfg.audit_max_retries,
         cfg.audit_retry_backoff_ms_initial,
-    ).spawn();
+    )
+    .spawn();
 
     let audit_recorder: Arc<dyn crate::audit::service::AuditRecorder> =
         Arc::new(ChannelAuditRecorder::new(audit_tx));
@@ -54,10 +55,13 @@ pub async fn build_app(
     // 2. Public routes (no auth)
     let public = Router::<AppState>::new()
         .route("/health", get(health))
-        .route("/ready", get({
-            let pool = pool.clone();
-            move || ready(pool.clone())
-        }));
+        .route(
+            "/ready",
+            get({
+                let pool = pool.clone();
+                move || ready(pool.clone())
+            }),
+        );
 
     // 3. Protected routes — empty in Plan 1 (handlers added in Plan 2 & 3)
     let auth_layer = AuthLayer::new(
@@ -82,8 +86,13 @@ async fn health() -> Json<serde_json::Value> {
     Json(json!({ "status": "ok" }))
 }
 
-async fn ready(pool: PgPool) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
-    match sqlx::query_scalar::<_, i32>("SELECT 1").fetch_one(&pool).await {
+async fn ready(
+    pool: PgPool,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    match sqlx::query_scalar::<_, i32>("SELECT 1")
+        .fetch_one(&pool)
+        .await
+    {
         Ok(_) => Ok(Json(json!({ "status": "ready" }))),
         Err(err) => {
             tracing::warn!(error = %err, "readiness check failed");
@@ -99,13 +108,17 @@ fn build_cors(cfg: &AppConfig) -> CorsLayer {
     if cfg.cors_allowed_origins.trim().is_empty() {
         CorsLayer::new()
     } else {
-        let origins: Vec<axum::http::HeaderValue> = cfg.cors_allowed_origins
+        let origins: Vec<axum::http::HeaderValue> = cfg
+            .cors_allowed_origins
             .split(',')
             .filter_map(|s| s.trim().parse().ok())
             .collect();
         CorsLayer::new()
             .allow_origin(origins)
             .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
-            .allow_headers([axum::http::header::CONTENT_TYPE, axum::http::header::AUTHORIZATION])
+            .allow_headers([
+                axum::http::header::CONTENT_TYPE,
+                axum::http::header::AUTHORIZATION,
+            ])
     }
 }

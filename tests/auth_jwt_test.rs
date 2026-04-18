@@ -1,4 +1,4 @@
-use egras::auth::jwt::{encode_access_token, decode_access_token, Claims};
+use egras::auth::jwt::{decode_access_token, encode_access_token, Claims};
 use uuid::Uuid;
 
 #[test]
