@@ -1,0 +1,254 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use uuid::Uuid;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AuditCategory {
+    SecurityStateChange,
+    SecurityAuth,
+    SecurityPermissionDenial,
+    TenantsStateChange,
+}
+
+impl AuditCategory {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::SecurityStateChange       => "security.state_change",
+            Self::SecurityAuth              => "security.auth",
+            Self::SecurityPermissionDenial  => "security.permission_denial",
+            Self::TenantsStateChange        => "tenants.state_change",
+        }
+    }
+
+    pub fn try_from_str(s: &str) -> Option<Self> {
+        Some(match s {
+            "security.state_change"      => Self::SecurityStateChange,
+            "security.auth"              => Self::SecurityAuth,
+            "security.permission_denial" => Self::SecurityPermissionDenial,
+            "tenants.state_change"       => Self::TenantsStateChange,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Outcome {
+    Success,
+    Failure,
+    Denied,
+}
+
+impl Outcome {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Success => "success",
+            Self::Failure => "failure",
+            Self::Denied  => "denied",
+        }
+    }
+
+    pub fn try_from_str(s: &str) -> Option<Self> {
+        Some(match s {
+            "success" => Self::Success,
+            "failure" => Self::Failure,
+            "denied"  => Self::Denied,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Actor {
+    pub user_id: Option<Uuid>,
+    pub organisation_id: Option<Uuid>,
+    pub request_id: Option<String>,
+    pub ip_address: Option<String>,
+    pub user_agent: Option<String>,
+}
+
+impl Actor {
+    pub fn system() -> Self {
+        Self { user_id: None, organisation_id: None, request_id: None, ip_address: None, user_agent: None }
+    }
+}
+
+/// An audit event ready to be recorded. Use `AuditEvent::*` constructors to build these.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditEvent {
+    pub id: Uuid,
+    pub occurred_at: DateTime<Utc>,
+    pub category: AuditCategory,
+    pub event_type: String,
+    pub actor_user_id: Option<Uuid>,
+    pub actor_organisation_id: Option<Uuid>,
+    pub target_type: Option<String>,
+    pub target_id: Option<Uuid>,
+    pub target_organisation_id: Option<Uuid>,
+    pub request_id: Option<String>,
+    pub ip_address: Option<String>,
+    pub user_agent: Option<String>,
+    pub outcome: Outcome,
+    pub reason_code: Option<String>,
+    pub payload: Value,
+}
+
+impl AuditEvent {
+    fn base(
+        category: AuditCategory,
+        event_type: &str,
+        outcome: Outcome,
+    ) -> Self {
+        Self {
+            id: Uuid::now_v7(),
+            occurred_at: Utc::now(),
+            category,
+            event_type: event_type.to_string(),
+            actor_user_id: None,
+            actor_organisation_id: None,
+            target_type: None,
+            target_id: None,
+            target_organisation_id: None,
+            request_id: None,
+            ip_address: None,
+            user_agent: None,
+            outcome,
+            reason_code: None,
+            payload: json!({}),
+        }
+    }
+
+    pub fn with_actor(mut self, actor: &Actor) -> Self {
+        self.actor_user_id = actor.user_id;
+        self.actor_organisation_id = actor.organisation_id;
+        self.request_id = actor.request_id.clone();
+        self.ip_address = actor.ip_address.clone();
+        self.user_agent = actor.user_agent.clone();
+        self
+    }
+
+    pub fn user_registered_success(
+        actor_user: Uuid,
+        actor_org: Uuid,
+        target_user: Uuid,
+        target_org: Uuid,
+        role_code: String,
+    ) -> Self {
+        let mut e = Self::base(AuditCategory::SecurityStateChange, "user.registered", Outcome::Success);
+        e.actor_user_id = Some(actor_user);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("user".into());
+        e.target_id = Some(target_user);
+        e.target_organisation_id = Some(target_org);
+        e.payload = json!({ "role_code": role_code });
+        e
+    }
+
+    pub fn login_success(user_id: Uuid, active_org: Uuid) -> Self {
+        let mut e = Self::base(AuditCategory::SecurityAuth, "login.success", Outcome::Success);
+        e.actor_user_id = Some(user_id);
+        e.actor_organisation_id = Some(active_org);
+        e.target_type = Some("user".into());
+        e.target_id = Some(user_id);
+        e
+    }
+
+    pub fn login_failed(reason_code: &str, username_or_email: &str) -> Self {
+        let mut e = Self::base(AuditCategory::SecurityAuth, "login.failed", Outcome::Failure);
+        e.reason_code = Some(reason_code.into());
+        e.payload = json!({ "username_or_email": username_or_email });
+        e
+    }
+
+    pub fn logout(user_id: Uuid, org: Uuid, jti: Uuid) -> Self {
+        let mut e = Self::base(AuditCategory::SecurityAuth, "logout", Outcome::Success);
+        e.actor_user_id = Some(user_id);
+        e.actor_organisation_id = Some(org);
+        e.payload = json!({ "jti": jti });
+        e
+    }
+
+    pub fn session_switched_org(user_id: Uuid, from_org: Uuid, to_org: Uuid) -> Self {
+        let mut e = Self::base(AuditCategory::SecurityAuth, "session.switched_org", Outcome::Success);
+        e.actor_user_id = Some(user_id);
+        e.actor_organisation_id = Some(to_org);
+        e.target_type = Some("organisation".into());
+        e.target_id = Some(to_org);
+        e.target_organisation_id = Some(to_org);
+        e.payload = json!({ "from_org": from_org });
+        e
+    }
+
+    pub fn password_changed(user_id: Uuid) -> Self {
+        let mut e = Self::base(AuditCategory::SecurityStateChange, "password.changed", Outcome::Success);
+        e.actor_user_id = Some(user_id);
+        e.target_type = Some("user".into());
+        e.target_id = Some(user_id);
+        e
+    }
+
+    pub fn password_reset_requested(email: &str) -> Self {
+        let mut e = Self::base(AuditCategory::SecurityStateChange, "password.reset_requested", Outcome::Success);
+        e.payload = json!({ "email": email });
+        e
+    }
+
+    pub fn password_reset_confirmed(user_id: Option<Uuid>, outcome: Outcome, reason: Option<String>) -> Self {
+        let mut e = Self::base(AuditCategory::SecurityStateChange, "password.reset_confirmed", outcome);
+        e.actor_user_id = user_id;
+        e.reason_code = reason;
+        e
+    }
+
+    pub fn permission_denied(user_id: Uuid, org: Uuid, permission: &str, path: &str) -> Self {
+        let mut e = Self::base(AuditCategory::SecurityPermissionDenial, "permission.denied", Outcome::Denied);
+        e.actor_user_id = Some(user_id);
+        e.actor_organisation_id = Some(org);
+        e.reason_code = Some(format!("missing:{permission}"));
+        e.payload = json!({ "path": path });
+        e
+    }
+
+    pub fn organisation_created(actor: Uuid, actor_org: Uuid, org_id: Uuid, name: &str) -> Self {
+        let mut e = Self::base(AuditCategory::TenantsStateChange, "organisation.created", Outcome::Success);
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("organisation".into());
+        e.target_id = Some(org_id);
+        e.target_organisation_id = Some(org_id);
+        e.payload = json!({ "name": name });
+        e
+    }
+
+    pub fn organisation_member_added(actor: Uuid, actor_org: Uuid, org_id: Uuid, user_id: Uuid, role_code: &str) -> Self {
+        let mut e = Self::base(AuditCategory::TenantsStateChange, "organisation.member_added", Outcome::Success);
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("user".into());
+        e.target_id = Some(user_id);
+        e.target_organisation_id = Some(org_id);
+        e.payload = json!({ "role_code": role_code });
+        e
+    }
+
+    pub fn organisation_member_removed(actor: Uuid, actor_org: Uuid, org_id: Uuid, user_id: Uuid) -> Self {
+        let mut e = Self::base(AuditCategory::TenantsStateChange, "organisation.member_removed", Outcome::Success);
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("user".into());
+        e.target_id = Some(user_id);
+        e.target_organisation_id = Some(org_id);
+        e
+    }
+
+    pub fn organisation_role_assigned(actor: Uuid, actor_org: Uuid, org_id: Uuid, user_id: Uuid, role_code: &str) -> Self {
+        let mut e = Self::base(AuditCategory::TenantsStateChange, "organisation.role_assigned", Outcome::Success);
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("user".into());
+        e.target_id = Some(user_id);
+        e.target_organisation_id = Some(org_id);
+        e.payload = json!({ "role_code": role_code });
+        e
+    }
+}
