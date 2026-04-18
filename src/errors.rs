@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use axum::http::StatusCode;
+use axum::response::{IntoResponse, Json, Response};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -129,5 +130,52 @@ impl AppError {
             Self::RateLimited => "Too many requests; retry later.".to_string(),
             Self::Internal(_) => "An internal error occurred.".to_string(),
         }
+    }
+}
+
+const TYPE_PREFIX: &str = "https://egras.dev/errors/";
+
+#[derive(Debug, Serialize)]
+struct ProblemJson<'a> {
+    #[serde(rename = "type")]
+    type_uri: String,
+    title: &'a str,
+    status: u16,
+    detail: String,
+    instance: Option<&'a str>,
+    request_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    errors: Option<&'a HashMap<String, Vec<String>>>,
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let status = self.http_status();
+        let slug = self.slug();
+        let title = self.title();
+        let detail = self.detail();
+        let errors_ref = if let AppError::Validation { errors } = &self { Some(errors) } else { None };
+
+        // Log internal errors with full chain before we drop the error.
+        if let AppError::Internal(err) = &self {
+            tracing::error!(error.kind = "internal", error.chain = %err, "internal error");
+        }
+
+        let body = ProblemJson {
+            type_uri: format!("{TYPE_PREFIX}{}", slug.as_str()),
+            title,
+            status: status.as_u16(),
+            detail,
+            instance: None,
+            request_id: None, // populated by a downstream layer if desired
+            errors: errors_ref,
+        };
+
+        let mut resp = (status, Json(body)).into_response();
+        resp.headers_mut().insert(
+            axum::http::header::CONTENT_TYPE,
+            axum::http::HeaderValue::from_static("application/problem+json"),
+        );
+        resp
     }
 }
