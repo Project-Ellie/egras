@@ -3,9 +3,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use sqlx::PgPool;
-use testcontainers::{runners::AsyncRunner, ContainerAsync};
-use testcontainers_modules::postgres::Postgres;
+use sqlx::{Executor, PgPool};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -16,30 +14,50 @@ use crate::audit::service::{AuditRecorder, ListAuditEvents, ListAuditEventsImpl,
 use crate::auth::jwt::encode_access_token;
 use crate::db::run_migrations;
 
-/// Ephemeral Postgres for tests. Keep the `ContainerAsync` alive for the test's lifetime.
+/// Returns the admin database URL used to create per-test databases.
+///
+/// Honours `TEST_DATABASE_URL` (set by docker-compose / CI service); falls
+/// back to the local test-pg container bound on `localhost:15432`.
+fn admin_url() -> String {
+    std::env::var("TEST_DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://egras:egras@127.0.0.1:15432/postgres".to_string())
+}
+
+/// A test database carved out of a shared postgres instance. On drop the
+/// database is left in place — cleanup is best-effort; spin the shared
+/// container from scratch for a clean slate.
 pub struct TestPool {
     pub pool: PgPool,
-    _container: ContainerAsync<Postgres>,
+    pub db_name: String,
 }
 
 impl TestPool {
     pub async fn fresh() -> Self {
-        let container = Postgres::default()
-            .with_db_name("egras_test")
-            .with_user("egras")
-            .with_password("egras")
-            .start()
-            .await
-            .expect("start postgres container");
+        let admin = admin_url();
+        let suffix = Uuid::now_v7().simple().to_string();
+        let db_name = format!("egras_test_{suffix}");
 
-        let host_port = container.get_host_port_ipv4(5432).await.expect("pg port");
-        let url = format!("postgres://egras:egras@127.0.0.1:{host_port}/egras_test");
-        let pool = PgPool::connect(&url).await.expect("connect pg");
+        let admin_pool = PgPool::connect(&admin)
+            .await
+            .expect("connect admin pg — is the shared test-pg container running?");
+        admin_pool
+            .execute(format!(r#"CREATE DATABASE "{db_name}""#).as_str())
+            .await
+            .expect("create test database");
+        admin_pool.close().await;
+
+        // Rebuild URL with the new database name.
+        let parsed = url::Url::parse(&admin).expect("parse admin url");
+        let scheme = parsed.scheme();
+        let user = parsed.username();
+        let pw = parsed.password().unwrap_or("");
+        let host = parsed.host_str().expect("admin url has host");
+        let port = parsed.port().unwrap_or(5432);
+        let url = format!("{scheme}://{user}:{pw}@{host}:{port}/{db_name}");
+
+        let pool = PgPool::connect(&url).await.expect("connect test pg");
         run_migrations(&pool).await.expect("migrations");
-        Self {
-            pool,
-            _container: container,
-        }
+        Self { pool, db_name }
     }
 }
 

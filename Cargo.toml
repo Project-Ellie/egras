@@ -13,7 +13,7 @@ name = "egras"
 path = "src/main.rs"
 
 [features]
-testing = ["dep:testcontainers", "dep:testcontainers-modules"]
+testing = ["dep:url"]
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -43,8 +43,7 @@ rand = "0.8"
 sha2 = "0.10"
 base64 = "0.22"
 hex = "0.4"
-testcontainers = { version = "0.20", optional = true }
-testcontainers-modules = { version = "0.8", features = ["postgres"], optional = true }
+url = { version = "2", optional = true }
 
 [dev-dependencies]
 egras = { path = ".", features = ["testing"] }
