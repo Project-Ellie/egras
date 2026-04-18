@@ -6,7 +6,7 @@ use sqlx::PgPool;
 use tower::{Layer, Service};
 use uuid::Uuid;
 
-use crate::auth::jwt::{decode_access_token, Claims};
+use crate::auth::jwt::decode_access_token;
 use crate::auth::permissions::PermissionSet;
 use crate::errors::AppError;
 
