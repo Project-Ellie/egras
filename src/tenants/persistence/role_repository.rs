@@ -9,8 +9,9 @@ pub trait RoleRepository: Send + Sync + 'static {
     async fn find_by_code(&self, code: &str) -> Result<Option<Role>, RepoError>;
 
     /// Idempotent: a row already matching `(user, org, role)` is a no-op, not a
-    /// conflict. `UnknownUser` / `UnknownRoleCode` map to `RepoError::UnknownUser`
-    /// / `RepoError::UnknownRoleCode` rather than a raw FK violation.
+    /// conflict. A missing user is mapped to `RepoError::UnknownUser`; all other
+    /// FK failures surface as `RepoError::Db` — the service layer owns
+    /// code-to-id resolution before calling this method.
     async fn assign(
         &self,
         user_id: Uuid,

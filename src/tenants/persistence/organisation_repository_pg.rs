@@ -93,6 +93,10 @@ impl OrganisationRepository for OrganisationRepositoryPg {
         .bind(role_id)
         .execute(&mut *tx)
         .await
+        // Only the user FK can fail in practice: the organisation was just
+        // inserted in this same transaction, and the role_id was resolved from
+        // a successful SELECT above. Any other FK failure indicates schema
+        // drift and is surfaced as `Db(err)`.
         .map_err(|e| {
             if let sqlx::Error::Database(ref dbe) = e {
                 if dbe.code().as_deref() == Some("23503")

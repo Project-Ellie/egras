@@ -59,7 +59,7 @@ impl RoleRepository for RoleRepositoryPg {
                             return RepoError::UnknownUser(user_id);
                         }
                         Some("user_organisation_roles_role_id_fkey") => {
-                            return RepoError::UnknownRoleCode(role_id.to_string());
+                            return RepoError::Db(e);
                         }
                         _ => {}
                     }

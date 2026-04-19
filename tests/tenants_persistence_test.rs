@@ -1,4 +1,4 @@
-use egras::tenants::model::OrganisationCursor;
+use egras::tenants::model::{MembershipCursor, OrganisationCursor};
 use egras::tenants::persistence::{
     OrganisationRepository, OrganisationRepositoryPg, RepoError, RoleRepository, RoleRepositoryPg,
 };
@@ -150,4 +150,65 @@ async fn is_member_true_only_for_actual_members() {
     assert!(orgs.is_member(user, org.id).await.unwrap());
     let stranger = seed_user(&pool, "mallory").await;
     assert!(!orgs.is_member(stranger, org.id).await.unwrap());
+}
+
+#[tokio::test]
+async fn list_members_is_paginated() {
+    let pool = TestPool::fresh().await.pool;
+    let alice = seed_user(&pool, "alice").await;
+    let bob = seed_user(&pool, "bob").await;
+    let carol = seed_user(&pool, "carol").await;
+    let dave = seed_user(&pool, "dave").await;
+
+    let orgs = OrganisationRepositoryPg::new(pool.clone());
+    let roles = RoleRepositoryPg::new(pool.clone());
+
+    // alice becomes owner (creates org with first member row)
+    let org = orgs
+        .create_with_initial_owner("acme", "retail", alice, "org_owner")
+        .await
+        .unwrap();
+
+    let member_role = roles.find_by_code("org_member").await.unwrap().unwrap();
+
+    // Sleep between assigns to ensure strictly ordered created_at timestamps.
+    tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+    roles.assign(bob, org.id, member_role.id).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+    roles.assign(carol, org.id, member_role.id).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+    roles.assign(dave, org.id, member_role.id).await.unwrap();
+
+    // Page 1: first 2 members.
+    let page1 = orgs.list_members(org.id, None, 2).await.unwrap();
+    assert_eq!(page1.len(), 2);
+
+    // Derive cursor from the last member on page 1.
+    let last = page1.last().unwrap();
+    let cursor_ts: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
+        "SELECT MIN(uor.created_at) FROM user_organisation_roles uor \
+         WHERE uor.user_id = $1 AND uor.organisation_id = $2",
+    )
+    .bind(last.user_id)
+    .bind(org.id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let cursor = MembershipCursor {
+        created_at: cursor_ts,
+        user_id: last.user_id,
+    };
+
+    // Page 2: next 2 members.
+    let page2 = orgs.list_members(org.id, Some(cursor), 2).await.unwrap();
+    assert_eq!(page2.len(), 2);
+
+    // No overlap between pages.
+    let ids1: std::collections::HashSet<_> = page1.iter().map(|m| m.user_id).collect();
+    let ids2: std::collections::HashSet<_> = page2.iter().map(|m| m.user_id).collect();
+    assert!(ids1.is_disjoint(&ids2), "pages must not overlap");
+
+    // Together they cover all 4 members.
+    let all_ids: std::collections::HashSet<_> = ids1.union(&ids2).copied().collect();
+    assert_eq!(all_ids.len(), 4);
 }
