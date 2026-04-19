@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    routing::{get, post},
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -12,9 +17,15 @@ use crate::errors::AppError;
 use crate::tenants::service::create_organisation::{
     create_organisation, CreateOrganisationError, CreateOrganisationInput,
 };
+use crate::tenants::service::list_my_organisations::{
+    list_my_organisations, ListError as ListMyOrgsError, ListMyOrganisationsInput,
+    OrganisationSummaryDto,
+};
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/organisations", post(post_create_organisation))
+    Router::new()
+        .route("/organisations", post(post_create_organisation))
+        .route("/me/organisations", get(get_list_my_organisations))
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -97,6 +108,60 @@ fn map_service_error(e: CreateOrganisationError) -> AppError {
         }
         CreateOrganisationError::Repo(r) => AppError::Internal(anyhow::anyhow!(r)),
         CreateOrganisationError::Internal(err) => AppError::Internal(err),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListQuery {
+    pub after: Option<String>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PagedOrganisations {
+    pub items: Vec<OrganisationBody>,
+    pub next_cursor: Option<String>,
+}
+
+async fn get_list_my_organisations(
+    State(state): State<AppState>,
+    caller: AuthedCaller,
+    axum::extract::Query(q): axum::extract::Query<ListQuery>,
+) -> Result<Json<PagedOrganisations>, AppError> {
+    let out = list_my_organisations(
+        &state,
+        caller.claims.sub,
+        ListMyOrganisationsInput {
+            after: q.after,
+            limit: q.limit.unwrap_or(50),
+        },
+    )
+    .await
+    .map_err(map_list_my_orgs_error)?;
+
+    Ok(Json(PagedOrganisations {
+        items: out
+            .items
+            .into_iter()
+            .map(|o: OrganisationSummaryDto| OrganisationBody {
+                id: o.id,
+                name: o.name,
+                business: o.business,
+                role_codes: o.role_codes,
+            })
+            .collect(),
+        next_cursor: out.next_cursor,
+    }))
+}
+
+fn map_list_my_orgs_error(e: ListMyOrgsError) -> AppError {
+    match e {
+        ListMyOrgsError::InvalidCursor => {
+            let mut errs = std::collections::HashMap::new();
+            errs.insert("after".into(), vec!["invalid_cursor".into()]);
+            AppError::Validation { errors: errs }
+        }
+        ListMyOrgsError::Repo(r) => AppError::Internal(anyhow::anyhow!(r)),
     }
 }
 
