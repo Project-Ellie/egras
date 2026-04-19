@@ -1,10 +1,10 @@
-use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::tenants::model::OrganisationCursor;
 use crate::tenants::persistence::RepoError;
+use crate::tenants::service::cursor_codec;
 
 #[derive(Debug, Clone)]
 pub struct ListMyOrganisationsInput {
@@ -42,7 +42,10 @@ pub async fn list_my_organisations(
     let limit = input.limit.clamp(1, 100);
 
     let cursor = match input.after.as_deref() {
-        Some(raw) => Some(decode_org_cursor(raw).map_err(|_| ListError::InvalidCursor)?),
+        Some(raw) => Some(
+            cursor_codec::decode::<OrganisationCursor>(raw)
+                .map_err(|_| ListError::InvalidCursor)?,
+        ),
         None => None,
     };
 
@@ -56,7 +59,7 @@ pub async fn list_my_organisations(
     let next_cursor = if rows.len() as u32 > limit {
         rows.truncate(limit as usize);
         let last = rows.last().expect("rows is non-empty by construction");
-        Some(encode_org_cursor(&OrganisationCursor {
+        Some(cursor_codec::encode(&OrganisationCursor {
             created_at: last.created_at,
             id: last.id,
         }))
@@ -76,16 +79,4 @@ pub async fn list_my_organisations(
             .collect(),
         next_cursor,
     })
-}
-
-fn encode_org_cursor(c: &OrganisationCursor) -> String {
-    let json = serde_json::to_vec(c).expect("serialize OrganisationCursor");
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(json)
-}
-
-fn decode_org_cursor(raw: &str) -> Result<OrganisationCursor, ()> {
-    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(raw)
-        .map_err(|_| ())?;
-    serde_json::from_slice::<OrganisationCursor>(&bytes).map_err(|_| ())
 }
