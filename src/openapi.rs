@@ -1,6 +1,8 @@
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::OpenApi;
 
+// TODO: version is hardcoded — utoipa 4's info(version = ...) requires a string literal.
+// Revisit when we upgrade utoipa or add build-time spec post-processing.
 #[derive(OpenApi)]
 #[openapi(
     info(

@@ -139,6 +139,9 @@ impl AppError {
 const TYPE_PREFIX: &str = "https://egras.dev/errors/";
 
 /// RFC 7807 problem body returned on all error responses.
+///
+/// All six stable fields are present in every response; `errors` is included
+/// only on validation errors (HTTP 400) and maps field name → list of slugs.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorBody {
     /// A URI reference identifying the error type.
@@ -150,19 +153,13 @@ pub struct ErrorBody {
     pub status: u16,
     /// Human-readable explanation specific to this occurrence.
     pub detail: String,
-}
-
-#[derive(Debug, Serialize)]
-struct ProblemJson<'a> {
-    #[serde(rename = "type")]
-    type_uri: String,
-    title: &'a str,
-    status: u16,
-    detail: String,
-    instance: Option<&'a str>,
-    request_id: Option<String>,
+    /// URI reference identifying the specific occurrence of the problem.
+    pub instance: Option<String>,
+    /// Correlation ID for request tracing.
+    pub request_id: Option<String>,
+    /// Field-level validation errors (present only on 400 responses).
     #[serde(skip_serializing_if = "Option::is_none")]
-    errors: Option<&'a HashMap<String, Vec<String>>>,
+    pub errors: Option<HashMap<String, Vec<String>>>,
 }
 
 impl IntoResponse for AppError {
@@ -171,8 +168,8 @@ impl IntoResponse for AppError {
         let slug = self.slug();
         let title = self.title();
         let detail = self.detail();
-        let errors_ref = if let AppError::Validation { errors } = &self {
-            Some(errors)
+        let errors = if let AppError::Validation { errors } = &self {
+            Some(errors.clone())
         } else {
             None
         };
@@ -182,14 +179,14 @@ impl IntoResponse for AppError {
             tracing::error!(error.kind = "internal", error.chain = %err, "internal error");
         }
 
-        let body = ProblemJson {
+        let body = ErrorBody {
             type_uri: format!("{TYPE_PREFIX}{}", slug.as_str()),
-            title,
+            title: title.to_string(),
             status: status.as_u16(),
             detail,
             instance: None,
             request_id: None, // populated by a downstream layer if desired
-            errors: errors_ref,
+            errors,
         };
 
         let mut resp = (status, Json(body)).into_response();

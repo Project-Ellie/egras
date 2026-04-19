@@ -158,6 +158,7 @@ pub struct PagedOrganisations {
         (status = 200, description = "Paginated list of the caller's organisations", body = PagedOrganisations),
         (status = 400, description = "Invalid cursor", body = ErrorBody),
         (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
     ),
 )]
 pub async fn get_list_my_organisations(
