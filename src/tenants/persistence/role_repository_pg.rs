@@ -44,7 +44,7 @@ impl RoleRepository for RoleRepositoryPg {
     ) -> Result<(), RepoError> {
         sqlx::query(
             "INSERT INTO user_organisation_roles (user_id, organisation_id, role_id) \
-             VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+             VALUES ($1, $2, $3) ON CONFLICT (user_id, organisation_id, role_id) DO NOTHING",
         )
         .bind(user_id)
         .bind(organisation_id)

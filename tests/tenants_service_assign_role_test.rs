@@ -35,6 +35,20 @@ async fn assign_role_happy_path_was_new_true() {
     .unwrap();
 
     assert!(out.was_new);
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM audit_events WHERE event_type = $1 AND target_id = $2 AND target_organisation_id = $3",
+    )
+    .bind("organisation.role_assigned")
+    .bind(target)
+    .bind(org)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        count, 1,
+        "exactly one audit event should fire on fresh assign"
+    );
 }
 
 #[tokio::test]
@@ -67,6 +81,20 @@ async fn assign_role_idempotent_was_new_false() {
     .unwrap();
 
     assert!(!out.was_new);
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM audit_events WHERE event_type = $1 AND target_id = $2 AND target_organisation_id = $3",
+    )
+    .bind("organisation.role_assigned")
+    .bind(target)
+    .bind(org)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        count, 0,
+        "no audit event should fire on idempotent repeat assign"
+    );
 }
 
 #[tokio::test]

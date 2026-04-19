@@ -79,6 +79,12 @@ pub async fn assign_role(
         .await?;
 
     // Step 6: Emit audit event only when the row is newly created.
+    // Known limitation: the has_role/assign pair is not atomic. Two concurrent
+    // equal requests can both observe has_role=false, both call assign (second
+    // hits ON CONFLICT DO NOTHING), and both emit an audit event. Mitigation
+    // for a follow-up: change RoleRepository::assign to return bool (rows_affected > 0)
+    // and derive was_new from the insert result. Left as-is for Plan 2a — the race
+    // is narrow under expected load and the duplicate audit is accurate, just redundant.
     if was_new {
         let event = AuditEvent::organisation_role_assigned(
             actor,
