@@ -93,6 +93,31 @@ async fn happy_path_creates_org_and_returns_201() {
 }
 
 #[tokio::test]
+async fn malformed_body_with_missing_permission_still_returns_403() {
+    let pool = TestPool::fresh().await.pool;
+    let user = seed_user(&pool, "alice").await;
+    let org = seed_org(&pool, "alice-org", "retail").await;
+    grant_role(&pool, user, org, "org_member").await; // lacks tenants.create
+
+    let cfg = test_config();
+    let token = bearer(&cfg.jwt_secret, &cfg.jwt_issuer, user, org);
+    let app = TestApp::spawn(pool, cfg).await;
+
+    let resp = reqwest::Client::new()
+        .post(format!("{}/api/v1/tenants/organisations", app.base_url))
+        .header("authorization", token)
+        .header("content-type", "application/json")
+        .body("this is not valid json {")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), reqwest::StatusCode::FORBIDDEN);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(body["type"], "https://egras.dev/errors/permission.denied");
+    app.stop().await;
+}
+
+#[tokio::test]
 async fn duplicate_name_returns_409() {
     let pool = TestPool::fresh().await.pool;
     let user = seed_user(&pool, "alice").await;
