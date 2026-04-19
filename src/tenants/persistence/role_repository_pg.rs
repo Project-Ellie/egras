@@ -70,4 +70,25 @@ impl RoleRepository for RoleRepositoryPg {
 
         Ok(())
     }
+
+    async fn has_role(
+        &self,
+        user_id: Uuid,
+        organisation_id: Uuid,
+        role_id: Uuid,
+    ) -> Result<bool, RepoError> {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(\
+               SELECT 1 FROM user_organisation_roles \
+               WHERE user_id = $1 AND organisation_id = $2 AND role_id = $3\
+             )",
+        )
+        .bind(user_id)
+        .bind(organisation_id)
+        .bind(role_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(exists)
+    }
 }

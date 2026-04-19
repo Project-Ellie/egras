@@ -12,8 +12,11 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::auth::extractors::{AuthedCaller, Perm, TenantsCreate, TenantsMembersList};
+use crate::auth::extractors::{
+    AuthedCaller, Perm, TenantsCreate, TenantsMembersList, TenantsRolesAssign,
+};
 use crate::errors::AppError;
+use crate::tenants::service::assign_role::{assign_role, AssignRoleError, AssignRoleInput};
 use crate::tenants::service::create_organisation::{
     create_organisation, CreateOrganisationError, CreateOrganisationInput,
 };
@@ -30,6 +33,7 @@ pub fn router() -> Router<AppState> {
         .route("/organisations", post(post_create_organisation))
         .route("/me/organisations", get(get_list_my_organisations))
         .route("/organisations/:id/members", get(get_list_members))
+        .route("/organisations/:id/memberships", post(post_assign_role))
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -227,6 +231,71 @@ async fn get_list_members(
             .collect(),
         next_cursor: out.next_cursor,
     }))
+}
+
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+pub struct AssignRoleRequest {
+    pub user_id: Uuid,
+    #[validate(length(min = 1, max = 64))]
+    pub role_code: String,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct AssignRoleResponseBody {
+    pub assigned: bool,
+}
+
+async fn post_assign_role(
+    State(state): State<AppState>,
+    _perm: Perm<TenantsRolesAssign>,
+    caller: AuthedCaller,
+    axum::extract::Path(org_id): axum::extract::Path<Uuid>,
+    Json(req): Json<AssignRoleRequest>,
+) -> Result<(StatusCode, Json<AssignRoleResponseBody>), AppError> {
+    req.validate().map_err(|e| AppError::Validation {
+        errors: validation_errors_to_map(e),
+    })?;
+
+    let out = assign_role(
+        &state,
+        caller.claims.sub,
+        caller.claims.org,
+        caller.permissions.is_operator_over_tenants(),
+        AssignRoleInput {
+            organisation_id: org_id,
+            target_user_id: req.user_id,
+            role_code: req.role_code,
+        },
+    )
+    .await
+    .map_err(map_assign_role_error)?;
+
+    Ok((
+        StatusCode::OK,
+        Json(AssignRoleResponseBody {
+            assigned: out.was_new,
+        }),
+    ))
+}
+
+fn map_assign_role_error(e: AssignRoleError) -> AppError {
+    match e {
+        AssignRoleError::NotFound => AppError::NotFound {
+            resource: "organisation".into(),
+        },
+        AssignRoleError::UnknownRoleCode => {
+            let mut errs = std::collections::HashMap::new();
+            errs.insert("role_code".into(), vec!["unknown_role_code".into()]);
+            AppError::Validation { errors: errs }
+        }
+        AssignRoleError::UnknownUser => {
+            let mut errs = std::collections::HashMap::new();
+            errs.insert("user_id".into(), vec!["not_a_member".into()]);
+            AppError::Validation { errors: errs }
+        }
+        AssignRoleError::Repo(r) => AppError::Internal(anyhow::anyhow!(r)),
+        AssignRoleError::Internal(err) => AppError::Internal(err),
+    }
 }
 
 fn validation_errors_to_map(e: validator::ValidationErrors) -> HashMap<String, Vec<String>> {

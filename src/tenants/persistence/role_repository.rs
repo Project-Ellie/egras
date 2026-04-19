@@ -18,4 +18,14 @@ pub trait RoleRepository: Send + Sync + 'static {
         organisation_id: Uuid,
         role_id: Uuid,
     ) -> Result<(), RepoError>;
+
+    /// Returns true iff `(user_id, organisation_id, role_id)` already exists in
+    /// `user_organisation_roles`. Used by the service layer for idempotency
+    /// detection before calling `assign`.
+    async fn has_role(
+        &self,
+        user_id: Uuid,
+        organisation_id: Uuid,
+        role_id: Uuid,
+    ) -> Result<bool, RepoError>;
 }

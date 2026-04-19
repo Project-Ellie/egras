@@ -97,3 +97,13 @@ impl Permission for TenantsMembersList {
         set.has(Self::CODE) || set.is_operator_over_tenants()
     }
 }
+
+/// Permission marker: `tenants.roles.assign`.
+/// Accepts either the direct permission OR operator bypass (`tenants.manage_all`).
+pub struct TenantsRolesAssign;
+impl Permission for TenantsRolesAssign {
+    const CODE: &'static str = "tenants.roles.assign";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has(Self::CODE) || set.is_operator_over_tenants()
+    }
+}
