@@ -1,1 +1,3 @@
-//! Tenants domain — populated in Plan 2.
+pub mod model;
+pub mod persistence;
+pub mod service;
