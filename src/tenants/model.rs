@@ -43,6 +43,8 @@ pub struct MemberSummary {
     pub username: String,
     pub email: String,
     pub role_codes: Vec<String>,
+    /// Earliest join timestamp for this user in the organisation. Used to build `MembershipCursor`.
+    pub joined_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -48,9 +48,14 @@ impl<S: Send + Sync> FromRequestParts<S> for AuthedCaller {
 /// Marker trait — one zero-sized type per permission code.
 pub trait Permission {
     const CODE: &'static str;
+    /// Whether the provided permission set grants this permission.
+    /// Default: direct `has(CODE)`. Override for permissions with operator bypass.
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has(Self::CODE)
+    }
 }
 
-/// Zero-sized extractor that enforces `P::CODE` on the caller. Runs as a
+/// Zero-sized extractor that enforces `P::accepts()` on the caller. Runs as a
 /// `FromRequestParts` extractor so it evaluates BEFORE the `Json<Body>`
 /// extractor, preserving the 401 > 403 > 400 > 2xx precedence.
 pub struct Perm<P: Permission>(PhantomData<P>);
@@ -67,7 +72,7 @@ impl<S: Send + Sync, P: Permission + 'static> FromRequestParts<S> for Perm<P> {
                 .ok_or_else(|| AppError::Unauthenticated {
                     reason: "no_permission_set".into(),
                 })?;
-        if set.has(P::CODE) {
+        if P::accepts(set) {
             Ok(Perm(PhantomData))
         } else {
             Err(AppError::PermissionDenied {
@@ -81,4 +86,14 @@ impl<S: Send + Sync, P: Permission + 'static> FromRequestParts<S> for Perm<P> {
 pub struct TenantsCreate;
 impl Permission for TenantsCreate {
     const CODE: &'static str = "tenants.create";
+}
+
+/// Permission marker: `tenants.members.list`.
+/// Accepts either the direct permission OR operator bypass (`tenants.manage_all`).
+pub struct TenantsMembersList;
+impl Permission for TenantsMembersList {
+    const CODE: &'static str = "tenants.members.list";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has(Self::CODE) || set.is_operator_over_tenants()
+    }
 }

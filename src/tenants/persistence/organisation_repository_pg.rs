@@ -276,7 +276,6 @@ struct MemberRow {
     username: String,
     email: String,
     role_codes: Vec<String>,
-    #[allow(dead_code)]
     joined_at: DateTime<Utc>,
 }
 
@@ -287,6 +286,7 @@ impl From<MemberRow> for MemberSummary {
             username: r.username,
             email: r.email,
             role_codes: r.role_codes,
+            joined_at: r.joined_at,
         }
     }
 }

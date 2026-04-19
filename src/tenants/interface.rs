@@ -12,7 +12,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::auth::extractors::{AuthedCaller, Perm, TenantsCreate};
+use crate::auth::extractors::{AuthedCaller, Perm, TenantsCreate, TenantsMembersList};
 use crate::errors::AppError;
 use crate::tenants::service::create_organisation::{
     create_organisation, CreateOrganisationError, CreateOrganisationInput,
@@ -21,11 +21,15 @@ use crate::tenants::service::list_my_organisations::{
     list_my_organisations, ListError as ListMyOrgsError, ListMyOrganisationsInput,
     OrganisationSummaryDto,
 };
+use crate::tenants::service::list_organisation_members::{
+    list_organisation_members, ListMembersError, ListMembersInput,
+};
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/organisations", post(post_create_organisation))
         .route("/me/organisations", get(get_list_my_organisations))
+        .route("/organisations/:id/members", get(get_list_members))
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -163,6 +167,66 @@ fn map_list_my_orgs_error(e: ListMyOrgsError) -> AppError {
         }
         ListMyOrgsError::Repo(r) => AppError::Internal(anyhow::anyhow!(r)),
     }
+}
+
+#[derive(Debug, Serialize)]
+pub struct MemberBody {
+    pub user_id: Uuid,
+    pub username: String,
+    pub email: String,
+    pub role_codes: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PagedMembers {
+    pub items: Vec<MemberBody>,
+    pub next_cursor: Option<String>,
+}
+
+async fn get_list_members(
+    _perm: Perm<TenantsMembersList>,
+    State(state): State<AppState>,
+    caller: AuthedCaller,
+    axum::extract::Path(id): axum::extract::Path<Uuid>,
+    axum::extract::Query(q): axum::extract::Query<ListQuery>,
+) -> Result<Json<PagedMembers>, AppError> {
+    let is_operator = caller.permissions.is_operator_over_tenants();
+    let out = list_organisation_members(
+        &state,
+        caller.claims.sub,
+        is_operator,
+        ListMembersInput {
+            organisation_id: id,
+            after: q.after,
+            limit: q.limit.unwrap_or(50),
+        },
+    )
+    .await
+    .map_err(|e| match e {
+        ListMembersError::NotFound => AppError::NotFound {
+            resource: "organisation".into(),
+        },
+        ListMembersError::InvalidCursor => {
+            let mut errs = std::collections::HashMap::new();
+            errs.insert("after".into(), vec!["invalid_cursor".into()]);
+            AppError::Validation { errors: errs }
+        }
+        ListMembersError::Repo(r) => AppError::Internal(anyhow::anyhow!(r)),
+    })?;
+
+    Ok(Json(PagedMembers {
+        items: out
+            .items
+            .into_iter()
+            .map(|m| MemberBody {
+                user_id: m.user_id,
+                username: m.username,
+                email: m.email,
+                role_codes: m.role_codes,
+            })
+            .collect(),
+        next_cursor: out.next_cursor,
+    }))
 }
 
 fn validation_errors_to_map(e: validator::ValidationErrors) -> HashMap<String, Vec<String>> {
