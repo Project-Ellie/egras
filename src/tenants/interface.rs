@@ -169,7 +169,7 @@ fn map_list_my_orgs_error(e: ListMyOrgsError) -> AppError {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct MemberBody {
     pub user_id: Uuid,
     pub username: String,
@@ -177,7 +177,7 @@ pub struct MemberBody {
     pub role_codes: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct PagedMembers {
     pub items: Vec<MemberBody>,
     pub next_cursor: Option<String>,

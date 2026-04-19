@@ -43,7 +43,11 @@ pub struct MemberSummary {
     pub username: String,
     pub email: String,
     pub role_codes: Vec<String>,
-    /// Earliest join timestamp for this user in the organisation. Used to build `MembershipCursor`.
+    /// Earliest role-assignment timestamp for this user in the organisation
+    /// (i.e. `MIN(user_organisation_roles.created_at)`). Used as the
+    /// pagination-cursor key for `MembershipCursor`; not a user-facing
+    /// "first joined" fact — a user with multiple role changes surfaces
+    /// the earliest of them.
     pub joined_at: DateTime<Utc>,
 }
 
