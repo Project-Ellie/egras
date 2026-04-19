@@ -86,8 +86,8 @@ pub struct OrganisationSummary {
 
 pub struct MemberSummary {
     pub user_id: Uuid,
+    pub username: String,  // users.username (users table has no display_name column)
     pub email: String,
-    pub display_name: String,
     pub role_codes: Vec<String>,
 }
 
@@ -161,12 +161,14 @@ Each use case is its own file in `src/tenants/service/` (per foundation §3.3) a
 
 Use case → permission mapping:
 
-| Use case                   | Required permission            | Notes                                                     |
-|----------------------------|--------------------------------|-----------------------------------------------------------|
-| `create_organisation`      | `tenants.organisation.create`  | Caller seeded as `org_admin` unless payload opts out.     |
-| `list_my_organisations`    | (authenticated, no extra perm) | Scoped to caller's memberships.                           |
-| `list_organisation_members`| `tenants.organisation.read`    | 404 on non-member without `tenants.manage_all`.           |
-| `assign_role`              | `tenants.role.assign`          | 404 on non-member without `tenants.manage_all`. Idempotent: re-assigning an existing `(user, org, role)` triple returns 200 (not 409).|
+| Use case                   | Required permission       | Notes                                                     |
+|----------------------------|---------------------------|-----------------------------------------------------------|
+| `create_organisation`      | `tenants.create`          | Caller seeded as `org_owner` unless payload opts out.     |
+| `list_my_organisations`    | (authenticated, no extra) | Scoped to caller's memberships.                           |
+| `list_organisation_members`| `tenants.members.list`    | 404 on non-member without `tenants.manage_all`.           |
+| `assign_role`              | `tenants.roles.assign`    | 404 on non-member without `tenants.manage_all`. Idempotent: re-assigning an existing `(user, org, role)` triple returns 200 (not 409).|
+
+Permission codes are the actual codes defined in migration 0005 (`tenants.create`, `tenants.members.list`, `tenants.roles.assign`, `tenants.manage_all`). Role codes (`org_owner`, `org_admin`, `org_member`, `operator_admin`) likewise come from migration 0005.
 
 ### HTTP layer (`src/tenants/interface.rs`)
 
@@ -186,14 +188,16 @@ Request/response DTOs live at the top of `interface.rs` (Plan 1 convention). All
 
 Service errors map to HTTP as follows (matching foundation §4):
 
-| Service error              | HTTP | RFC 7807 `type`                      |
-|----------------------------|------|--------------------------------------|
-| `NotMember` (w/o manage_all) | 404 | `/errors/not-found`                  |
-| `DuplicateName`            | 409  | `/errors/conflict`                   |
-| `UnknownRoleCode`          | 400  | `/errors/validation`                 |
-| `UnknownUser`              | 400  | `/errors/validation`                 |
-| `Forbidden` (perm missing) | 403  | `/errors/forbidden`                  |
-| `Db(_)`                    | 500  | `/errors/internal`                   |
+Service errors re-use the foundation `AppError` enum (see `src/errors.rs`). Mapping:
+
+| Condition                       | `AppError` variant                   | HTTP | slug                          |
+|---------------------------------|--------------------------------------|------|-------------------------------|
+| Non-member w/o `manage_all`     | `NotFound { resource: "organisation" }` | 404  | `resource.not_found`          |
+| Duplicate organisation name     | `Conflict { reason }`                | 409  | `resource.conflict`           |
+| Unknown role code in payload    | `Validation { errors }`              | 400  | `validation.invalid_request`  |
+| Unknown target user id          | `Validation { errors }`              | 400  | `validation.invalid_request`  |
+| Missing permission              | `PermissionDenied { code }`          | 403  | `permission.denied`           |
+| DB / other internal failure     | `Internal(anyhow::Error)`            | 500  | `internal.error`              |
 
 ## 3. Testing strategy (hybrid)
 
