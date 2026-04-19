@@ -4,6 +4,7 @@ pub mod auth;
 pub mod config;
 pub mod db;
 pub mod errors;
+pub mod openapi;
 pub mod security;
 pub mod tenants;
 
@@ -17,6 +18,8 @@ use serde_json::json;
 use sqlx::PgPool;
 use tokio::sync::mpsc;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use crate::app_state::AppState;
 use crate::audit::persistence::AuditRepositoryPg;
@@ -70,6 +73,10 @@ pub async fn build_app(
                 let pool = pool.clone();
                 move || ready(pool.clone())
             }),
+        )
+        .merge(
+            SwaggerUi::new("/swagger-ui")
+                .url("/api-docs/openapi.json", crate::openapi::ApiDoc::openapi()),
         );
 
     // 3. Protected routes — empty in Plan 1 (handlers added in Plan 2 & 3)

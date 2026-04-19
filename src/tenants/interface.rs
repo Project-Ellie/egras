@@ -58,7 +58,21 @@ pub struct OrganisationBody {
     pub role_codes: Vec<String>,
 }
 
-async fn post_create_organisation(
+#[utoipa::path(
+    post,
+    path = "/api/v1/tenants/organisations",
+    tag = "tenants",
+    request_body = CreateOrganisationRequest,
+    security(("bearer" = [])),
+    responses(
+        (status = 201, description = "Organisation created", body = OrganisationBody),
+        (status = 400, description = "Validation error", body = ErrorBody),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+        (status = 409, description = "Duplicate organisation name", body = ErrorBody),
+    ),
+)]
+pub async fn post_create_organisation(
     State(state): State<AppState>,
     caller: AuthedCaller,
     _perm: Perm<TenantsCreate>,
@@ -131,7 +145,22 @@ pub struct PagedOrganisations {
     pub next_cursor: Option<String>,
 }
 
-async fn get_list_my_organisations(
+#[utoipa::path(
+    get,
+    path = "/api/v1/tenants/me/organisations",
+    tag = "tenants",
+    security(("bearer" = [])),
+    params(
+        ("after" = Option<String>, Query, description = "Cursor for pagination"),
+        ("limit" = Option<u32>, Query, description = "Maximum items to return (default 50)"),
+    ),
+    responses(
+        (status = 200, description = "Paginated list of the caller's organisations", body = PagedOrganisations),
+        (status = 400, description = "Invalid cursor", body = ErrorBody),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+    ),
+)]
+pub async fn get_list_my_organisations(
     State(state): State<AppState>,
     caller: AuthedCaller,
     axum::extract::Query(q): axum::extract::Query<ListQuery>,
@@ -187,7 +216,25 @@ pub struct PagedMembers {
     pub next_cursor: Option<String>,
 }
 
-async fn get_list_members(
+#[utoipa::path(
+    get,
+    path = "/api/v1/tenants/organisations/{id}/members",
+    tag = "tenants",
+    security(("bearer" = [])),
+    params(
+        ("id" = Uuid, Path, description = "Organisation ID"),
+        ("after" = Option<String>, Query, description = "Cursor for pagination"),
+        ("limit" = Option<u32>, Query, description = "Maximum items to return (default 50)"),
+    ),
+    responses(
+        (status = 200, description = "Paginated list of organisation members", body = PagedMembers),
+        (status = 400, description = "Invalid cursor", body = ErrorBody),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+        (status = 404, description = "Organisation not found", body = ErrorBody),
+    ),
+)]
+pub async fn get_list_members(
     _perm: Perm<TenantsMembersList>,
     State(state): State<AppState>,
     caller: AuthedCaller,
@@ -245,7 +292,24 @@ pub struct AssignRoleResponseBody {
     pub assigned: bool,
 }
 
-async fn post_assign_role(
+#[utoipa::path(
+    post,
+    path = "/api/v1/tenants/organisations/{id}/memberships",
+    tag = "tenants",
+    request_body = AssignRoleRequest,
+    security(("bearer" = [])),
+    params(
+        ("id" = Uuid, Path, description = "Organisation ID"),
+    ),
+    responses(
+        (status = 200, description = "Role assigned", body = AssignRoleResponseBody),
+        (status = 400, description = "Validation error", body = ErrorBody),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+        (status = 404, description = "Organisation not found", body = ErrorBody),
+    ),
+)]
+pub async fn post_assign_role(
     State(state): State<AppState>,
     _perm: Perm<TenantsRolesAssign>,
     caller: AuthedCaller,

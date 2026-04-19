@@ -4,6 +4,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Json, Response};
 use serde::Serialize;
 use thiserror::Error;
+use utoipa::ToSchema;
 
 /// Canonical error slugs from spec §8.6.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -136,6 +137,20 @@ impl AppError {
 }
 
 const TYPE_PREFIX: &str = "https://egras.dev/errors/";
+
+/// RFC 7807 problem body returned on all error responses.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ErrorBody {
+    /// A URI reference identifying the error type.
+    #[serde(rename = "type")]
+    pub type_uri: String,
+    /// Short human-readable summary of the error.
+    pub title: String,
+    /// HTTP status code.
+    pub status: u16,
+    /// Human-readable explanation specific to this occurrence.
+    pub detail: String,
+}
 
 #[derive(Debug, Serialize)]
 struct ProblemJson<'a> {
