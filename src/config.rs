@@ -65,6 +65,29 @@ fn default_audit_backoff() -> u64 {
     100
 }
 
+#[cfg(any(test, feature = "testing"))]
+impl AppConfig {
+    pub fn default_for_tests() -> Self {
+        Self {
+            database_url: std::env::var("TEST_DATABASE_URL")
+                .unwrap_or_else(|_| "postgres://egras:egras@127.0.0.1:15432/postgres".into()),
+            database_max_connections: 5,
+            bind_address: "127.0.0.1:0".into(),
+            jwt_secret: "x".repeat(32),
+            jwt_ttl_secs: 3600,
+            jwt_issuer: "egras-test".into(),
+            log_level: "info".into(),
+            log_format: "json".into(),
+            cors_allowed_origins: String::new(),
+            password_reset_ttl_secs: 3600,
+            operator_org_name: "operator".into(),
+            audit_channel_capacity: 128,
+            audit_max_retries: 0,
+            audit_retry_backoff_ms_initial: 10,
+        }
+    }
+}
+
 impl AppConfig {
     pub fn from_env() -> anyhow::Result<Self> {
         let cfg: AppConfig = Figment::new()

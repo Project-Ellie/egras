@@ -78,7 +78,9 @@ pub async fn build_app(
         cfg.jwt_issuer.clone(),
         PermissionLoader::pg(pool.clone()),
     );
-    let protected: Router<AppState> = Router::new().layer(auth_layer);
+    let protected: Router<AppState> = Router::new()
+        .nest("/api/v1/tenants", crate::tenants::interface::router())
+        .layer(auth_layer);
 
     // 4. Compose
     let cors = build_cors(&cfg);
