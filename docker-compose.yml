@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: egras
+      POSTGRES_PASSWORD: egras
+      POSTGRES_DB: egras
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U egras -d egras"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  egras:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      EGRAS_DATABASE_URL: postgres://egras:egras@postgres:5432/egras
+      EGRAS_DATABASE_MAX_CONNECTIONS: "10"
+      EGRAS_BIND_ADDRESS: 0.0.0.0:8080
+      EGRAS_JWT_SECRET: "DEV-ONLY-32-bytes-of-placeholder-entropy"
+      EGRAS_JWT_TTL_SECS: "3600"
+      EGRAS_JWT_ISSUER: "egras"
+      EGRAS_LOG_LEVEL: "info"
+      EGRAS_LOG_FORMAT: "json"
+      EGRAS_PASSWORD_RESET_TTL_SECS: "3600"
+      EGRAS_OPERATOR_ORG_NAME: "operator"
+      EGRAS_AUDIT_CHANNEL_CAPACITY: "4096"
+      EGRAS_AUDIT_MAX_RETRIES: "3"
+      EGRAS_AUDIT_RETRY_BACKOFF_MS_INITIAL: "100"
+    ports:
+      - "8080:8080"
+
+volumes:
+  pg_data:
