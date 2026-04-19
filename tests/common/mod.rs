@@ -3,3 +3,4 @@
 //!   mod common;
 pub mod auth;
 pub mod fixtures;
+pub mod seed;

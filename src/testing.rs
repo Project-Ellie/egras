@@ -101,6 +101,8 @@ pub struct MockAppStateBuilder {
     pool: PgPool,
     audit_recorder: Option<Arc<dyn AuditRecorder>>,
     list_audit_events: Option<Arc<dyn ListAuditEvents>>,
+    organisations: Option<Arc<dyn crate::tenants::persistence::OrganisationRepository>>,
+    roles: Option<Arc<dyn crate::tenants::persistence::RoleRepository>>,
 }
 
 impl MockAppStateBuilder {
@@ -109,6 +111,8 @@ impl MockAppStateBuilder {
             pool,
             audit_recorder: None,
             list_audit_events: None,
+            organisations: None,
+            roles: None,
         }
     }
 
@@ -129,11 +133,36 @@ impl MockAppStateBuilder {
         self
     }
 
+    pub fn with_pg_tenants_repos(mut self) -> Self {
+        self.organisations = Some(Arc::new(
+            crate::tenants::persistence::OrganisationRepositoryPg::new(self.pool.clone()),
+        ));
+        self.roles = Some(Arc::new(
+            crate::tenants::persistence::RoleRepositoryPg::new(self.pool.clone()),
+        ));
+        self
+    }
+
+    pub fn organisations(
+        mut self,
+        r: Arc<dyn crate::tenants::persistence::OrganisationRepository>,
+    ) -> Self {
+        self.organisations = Some(r);
+        self
+    }
+
+    pub fn roles(mut self, r: Arc<dyn crate::tenants::persistence::RoleRepository>) -> Self {
+        self.roles = Some(r);
+        self
+    }
+
     pub fn build(self) -> AppState {
         AppState {
             pool: self.pool,
             audit_recorder: self.audit_recorder.expect("audit_recorder not set"),
             list_audit_events: self.list_audit_events.expect("list_audit_events not set"),
+            organisations: self.organisations.expect("organisations not set"),
+            roles: self.roles.expect("roles not set"),
         }
     }
 }

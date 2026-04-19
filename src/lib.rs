@@ -46,10 +46,19 @@ pub async fn build_app(
     let list_audit_events: Arc<dyn crate::audit::service::ListAuditEvents> =
         Arc::new(ListAuditEventsImpl::new(audit_repo.clone()));
 
+    let organisations: Arc<dyn crate::tenants::persistence::OrganisationRepository> = Arc::new(
+        crate::tenants::persistence::OrganisationRepositoryPg::new(pool.clone()),
+    );
+    let roles: Arc<dyn crate::tenants::persistence::RoleRepository> = Arc::new(
+        crate::tenants::persistence::RoleRepositoryPg::new(pool.clone()),
+    );
+
     let state = AppState {
         pool: pool.clone(),
         audit_recorder,
         list_audit_events,
+        organisations,
+        roles,
     };
 
     // 2. Public routes (no auth)
