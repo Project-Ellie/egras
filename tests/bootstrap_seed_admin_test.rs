@@ -51,6 +51,14 @@ async fn seed_admin_happy_path_creates_user_and_audit() {
             .await
             .unwrap();
     assert_eq!(count, 1);
+
+    let target_id: Option<uuid::Uuid> = sqlx::query_scalar(
+        "SELECT target_id FROM audit_events WHERE event_type = 'user.registered' LIMIT 1",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(target_id, Some(out.user_id));
 }
 
 #[tokio::test]
@@ -83,4 +91,22 @@ async fn seed_admin_fails_when_operator_org_absent() {
     .unwrap_err();
 
     assert!(matches!(err, SeedAdminError::OperatorOrgNotFound(_)));
+}
+
+#[tokio::test]
+async fn seed_admin_duplicate_username_returns_internal_error() {
+    let pool = TestPool::fresh().await.pool;
+
+    // First seed succeeds.
+    bootstrap_seed_admin(&pool, input("first@example.com", "adminuser"))
+        .await
+        .expect("first seed");
+
+    // Second seed with same username but different email hits the DB unique constraint.
+    let err = bootstrap_seed_admin(&pool, input("second@example.com", "adminuser"))
+        .await
+        .unwrap_err();
+
+    // The service surfaces this as Internal (DB constraint violation), not a dedicated variant.
+    assert!(matches!(err, SeedAdminError::Internal(_)));
 }
