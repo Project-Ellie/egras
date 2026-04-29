@@ -274,15 +274,16 @@ impl OrganisationRepository for OrganisationRepositoryPg {
             return Err(RepoError::NotMember);
         }
 
-        // Count org_owner rows for other users (exclusive lock via FOR UPDATE).
+        // Count org_owner rows for other users (lock the relevant rows via FOR UPDATE on a CTE).
         let other_owners: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) \
-             FROM user_organisation_roles uor \
-             JOIN roles r ON r.id = uor.role_id \
-             WHERE uor.organisation_id = $1 \
-               AND r.code = 'org_owner' \
-               AND uor.user_id != $2 \
-             FOR UPDATE",
+            "SELECT COUNT(*) FROM (\
+                 SELECT uor.user_id FROM user_organisation_roles uor \
+                 JOIN roles r ON r.id = uor.role_id \
+                 WHERE uor.organisation_id = $1 \
+                   AND r.code = 'org_owner' \
+                   AND uor.user_id != $2 \
+                 FOR UPDATE\
+             ) AS owners",
         )
         .bind(org_id)
         .bind(user_id)
