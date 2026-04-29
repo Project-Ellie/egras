@@ -38,14 +38,13 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command.unwrap_or(Commands::Serve) {
         Commands::Serve => run_serve(cfg).await,
-        Commands::SeedAdmin { .. } => {
-            eprintln!("seed-admin: not implemented yet (Plan 3)");
-            std::process::exit(2);
-        }
-        Commands::DumpOpenapi => {
-            eprintln!("dump-openapi: not implemented yet (Plan 3)");
-            std::process::exit(2);
-        }
+        Commands::SeedAdmin {
+            email,
+            username,
+            password,
+            role,
+        } => run_seed_admin(cfg, email, username, password, role).await,
+        Commands::DumpOpenapi => run_dump_openapi(),
     }
 }
 
@@ -91,5 +90,62 @@ async fn run_serve(cfg: AppConfig) -> anyhow::Result<()> {
 
     audit_handle.shutdown().await;
     pool.close().await;
+    Ok(())
+}
+
+async fn run_seed_admin(
+    cfg: AppConfig,
+    email: String,
+    username: String,
+    password: String,
+    role: String,
+) -> anyhow::Result<()> {
+    use egras::security::service::bootstrap_seed_admin::{
+        bootstrap_seed_admin, SeedAdminError, SeedAdminInput,
+    };
+
+    let pool = egras::db::build_pool(&cfg).await?;
+    egras::db::run_migrations(&pool).await?;
+
+    match bootstrap_seed_admin(
+        &pool,
+        SeedAdminInput {
+            email,
+            username,
+            password,
+            role_code: role,
+            operator_org_name: cfg.operator_org_name.clone(),
+        },
+    )
+    .await
+    {
+        Ok(out) => {
+            println!("{}", out.user_id);
+            pool.close().await;
+            Ok(())
+        }
+        Err(SeedAdminError::OperatorOrgNotFound(name)) => {
+            eprintln!("error: operator organisation '{name}' not found — did you run migrations?");
+            pool.close().await;
+            std::process::exit(1);
+        }
+        Err(SeedAdminError::UserAlreadyExists(email)) => {
+            eprintln!("error: user with email '{email}' already exists — skipping");
+            pool.close().await;
+            std::process::exit(1);
+        }
+        Err(SeedAdminError::Internal(e)) => {
+            pool.close().await;
+            Err(e)
+        }
+    }
+}
+
+fn run_dump_openapi() -> anyhow::Result<()> {
+    use utoipa::OpenApi;
+    let json = egras::openapi::ApiDoc::openapi()
+        .to_pretty_json()
+        .map_err(|e| anyhow::anyhow!("failed to serialise OpenAPI: {e}"))?;
+    println!("{json}");
     Ok(())
 }
