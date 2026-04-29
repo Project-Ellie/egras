@@ -49,7 +49,7 @@ psql -h localhost -U postgres -c "CREATE DATABASE egras;"
 cargo run
 ```
 
-The server listens on `0.0.0.0:8088` by default (set `EGRAS_BIND_ADDRESS` to override).
+The server listens on `0.0.0.0:8080` by default (set `EGRAS_BIND_ADDRESS` to override).
 
 ---
 
@@ -111,10 +111,10 @@ TEST_DATABASE_URL=postgres://egras:egras@localhost:5432/postgres \
 src/
   security/     # Users, auth, password reset
   tenants/      # Organisations, roles, memberships
-  audit/         # Immutable event log
-  auth/          # JWT decode, tower middleware, permission extractors
-  errors.rs      # AppError → RFC 7807
-  app_state.rs   # Dependency injection via trait objects
+  audit/        # Immutable event log
+  auth/         # JWT decode, tower middleware, permission extractors
+  errors.rs     # AppError → RFC 7807
+  app_state.rs  # Dependency injection via trait objects
 migrations/     # SQLx migrations (run automatically on startup)
 tests/          # Integration and E2E tests
 docs/
