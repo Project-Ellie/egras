@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::security::model::PasswordResetToken;
@@ -15,7 +16,7 @@ pub trait TokenRepository: Send + Sync + 'static {
         &self,
         user_id: Uuid,
         token_hash: &str,
-        expires_at: chrono::DateTime<chrono::Utc>,
+        expires_at: DateTime<Utc>,
     ) -> Result<PasswordResetToken, TokenRepoError>;
 
     async fn find_valid(
@@ -25,5 +26,5 @@ pub trait TokenRepository: Send + Sync + 'static {
 
     async fn consume(&self, token_id: Uuid) -> Result<(), TokenRepoError>;
 
-    async fn count_pending_for_user(&self, user_id: Uuid) -> Result<u64, TokenRepoError>;
+    async fn count_pending_for_user(&self, user_id: Uuid) -> Result<i64, TokenRepoError>;
 }
