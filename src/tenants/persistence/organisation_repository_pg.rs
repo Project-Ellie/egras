@@ -220,6 +220,111 @@ impl OrganisationRepository for OrganisationRepositoryPg {
 
         Ok(exists)
     }
+
+    async fn add_member(
+        &self,
+        user_id: Uuid,
+        org_id: Uuid,
+        role_code: &str,
+    ) -> Result<(), RepoError> {
+        let role_id: Option<Uuid> = sqlx::query_scalar(
+            "SELECT id FROM roles WHERE code = $1",
+        )
+        .bind(role_code)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let role_id = role_id.ok_or_else(|| RepoError::UnknownRoleCode(role_code.to_string()))?;
+
+        sqlx::query(
+            "INSERT INTO user_organisation_roles (user_id, organisation_id, role_id) \
+             VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+        )
+        .bind(user_id)
+        .bind(org_id)
+        .bind(role_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            if let sqlx::Error::Database(ref dbe) = e {
+                if dbe.code().as_deref() == Some("23503") {
+                    return RepoError::NotFound;
+                }
+            }
+            RepoError::Db(e)
+        })?;
+
+        Ok(())
+    }
+
+    async fn remove_member_checked(
+        &self,
+        user_id: Uuid,
+        org_id: Uuid,
+    ) -> Result<(), RepoError> {
+        let mut tx = self.pool.begin().await?;
+
+        // Lock and check membership.
+        let is_member: bool = sqlx::query_scalar(
+            "SELECT EXISTS(\
+                 SELECT 1 FROM user_organisation_roles \
+                 WHERE user_id = $1 AND organisation_id = $2 \
+             )",
+        )
+        .bind(user_id)
+        .bind(org_id)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        if !is_member {
+            return Err(RepoError::NotMember);
+        }
+
+        // Count org_owner rows for other users (exclusive lock via FOR UPDATE).
+        let other_owners: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) \
+             FROM user_organisation_roles uor \
+             JOIN roles r ON r.id = uor.role_id \
+             WHERE uor.organisation_id = $1 \
+               AND r.code = 'org_owner' \
+               AND uor.user_id != $2 \
+             FOR UPDATE",
+        )
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        // Check if target holds org_owner.
+        let target_is_owner: bool = sqlx::query_scalar(
+            "SELECT EXISTS(\
+                 SELECT 1 FROM user_organisation_roles uor \
+                 JOIN roles r ON r.id = uor.role_id \
+                 WHERE uor.user_id = $1 AND uor.organisation_id = $2 \
+                   AND r.code = 'org_owner' \
+             )",
+        )
+        .bind(user_id)
+        .bind(org_id)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        if target_is_owner && other_owners == 0 {
+            return Err(RepoError::LastOwner);
+        }
+
+        sqlx::query(
+            "DELETE FROM user_organisation_roles \
+             WHERE user_id = $1 AND organisation_id = $2",
+        )
+        .bind(user_id)
+        .bind(org_id)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(())
+    }
 }
 
 // ---------------------------------------------------------------------------
