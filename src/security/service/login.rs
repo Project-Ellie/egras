@@ -41,7 +41,9 @@ pub async fn login(state: &AppState, input: LoginInput) -> Result<LoginOutput, L
         Some(u) => u,
         None => {
             let event = AuditEvent::login_failed("not_found", &input.username_or_email);
-            let _ = state.audit_recorder.record(event).await;
+            if let Err(e) = state.audit_recorder.record(event).await {
+                warn!(error = %e, "audit record failed for login.failed");
+            }
             return Err(LoginError::InvalidCredentials);
         }
     };
@@ -50,7 +52,9 @@ pub async fn login(state: &AppState, input: LoginInput) -> Result<LoginOutput, L
         .map_err(LoginError::Internal)?;
     if !ok {
         let event = AuditEvent::login_failed("bad_password", &input.username_or_email);
-        let _ = state.audit_recorder.record(event).await;
+        if let Err(e) = state.audit_recorder.record(event).await {
+            warn!(error = %e, "audit record failed for login.failed");
+        }
         return Err(LoginError::InvalidCredentials);
     }
 

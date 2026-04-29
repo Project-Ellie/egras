@@ -71,6 +71,8 @@ pub async fn register_user(
             UserRepoError::Db(e) => RegisterUserError::Internal(e.into()),
         })?;
 
+    // Non-atomic: if this fails the user row exists without membership.
+    // Acceptable for this seed — the user can be manually added to an org via seed-admin.
     state
         .organisations
         .add_member(user.id, input.target_org_id, &input.role_code)
