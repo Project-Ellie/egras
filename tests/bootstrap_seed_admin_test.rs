@@ -22,12 +22,11 @@ async fn seed_admin_happy_path_creates_user_and_audit() {
         .expect("seed admin");
 
     // user row exists
-    let username: String =
-        sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
-            .bind(out.user_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let username: String = sqlx::query_scalar("SELECT username FROM users WHERE id = $1")
+        .bind(out.user_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     assert_eq!(username, "admin");
 
     // membership row exists in the operator org
@@ -45,11 +44,12 @@ async fn seed_admin_happy_path_creates_user_and_audit() {
     assert!(is_member, "user should be in the operator org");
 
     // audit row exists
-    let count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM audit_events WHERE event_type = 'user.registered'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM audit_events WHERE event_type = 'user.registered'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     assert_eq!(count, 1);
 
     let target_id: Option<uuid::Uuid> = sqlx::query_scalar(
