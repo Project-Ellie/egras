@@ -1,8 +1,8 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use egras::testing::{MockAppStateBuilder, TestPool};
 use common::seed::{grant_role, seed_org, seed_user};
+use egras::testing::{MockAppStateBuilder, TestPool};
 
 #[tokio::test]
 async fn user_repository_create_and_find() {
@@ -39,8 +39,16 @@ async fn user_repository_duplicate_username_is_error() {
         .with_pg_security_repos()
         .build();
 
-    state.users.create("dupe", "dupe1@example.com", "h").await.unwrap();
-    let err = state.users.create("dupe", "dupe2@example.com", "h").await.unwrap_err();
+    state
+        .users
+        .create("dupe", "dupe1@example.com", "h")
+        .await
+        .unwrap();
+    let err = state
+        .users
+        .create("dupe", "dupe2@example.com", "h")
+        .await
+        .unwrap_err();
     assert!(matches!(
         err,
         egras::security::persistence::UserRepoError::DuplicateUsername(_)
@@ -120,7 +128,11 @@ async fn token_repository_drops_oldest_when_at_capacity() {
             .await
             .expect("insert");
     }
-    state.tokens.insert(user, "hash_new", exp).await.expect("4th insert");
+    state
+        .tokens
+        .insert(user, "hash_new", exp)
+        .await
+        .expect("4th insert");
 
     assert!(state.tokens.find_valid("hash_0").await.unwrap().is_none());
     assert!(state.tokens.find_valid("hash_new").await.unwrap().is_some());

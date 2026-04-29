@@ -1,13 +1,13 @@
 #[path = "common/mod.rs"]
 mod common;
 
+use common::seed::{grant_role, seed_org, seed_user_with_password};
 use egras::security::service::change_password::{
     change_password, ChangePasswordError, ChangePasswordInput,
 };
 use egras::security::service::logout::logout;
 use egras::security::service::switch_org::{switch_org, SwitchOrgError, SwitchOrgInput};
 use egras::testing::{MockAppStateBuilder, TestPool};
-use common::seed::{grant_role, seed_org, seed_user_with_password};
 use uuid::Uuid;
 
 #[tokio::test]
@@ -80,13 +80,11 @@ async fn change_password_happy_path_updates_hash() {
     .unwrap();
 
     let updated = state.users.find_by_id(user).await.unwrap().unwrap();
-    assert!(
-        egras::security::service::password_hash::verify_password(
-            "newpassword1",
-            &updated.password_hash
-        )
-        .unwrap()
-    );
+    assert!(egras::security::service::password_hash::verify_password(
+        "newpassword1",
+        &updated.password_hash
+    )
+    .unwrap());
 }
 
 #[tokio::test]
@@ -135,7 +133,9 @@ async fn switch_org_happy_path_returns_new_token() {
         &state,
         user,
         org1,
-        SwitchOrgInput { target_org_id: org2 },
+        SwitchOrgInput {
+            target_org_id: org2,
+        },
     )
     .await
     .unwrap();

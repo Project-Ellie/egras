@@ -1,9 +1,11 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use egras::security::service::register_user::{register_user, RegisterUserError, RegisterUserInput};
-use egras::testing::{MockAppStateBuilder, TestPool};
 use common::seed::{seed_org, seed_user};
+use egras::security::service::register_user::{
+    register_user, RegisterUserError, RegisterUserInput,
+};
+use egras::testing::{MockAppStateBuilder, TestPool};
 
 #[tokio::test]
 async fn register_happy_path_creates_user_and_audit() {

@@ -1,9 +1,9 @@
 #[path = "common/mod.rs"]
 mod common;
 
+use common::seed::{grant_role, seed_org, seed_user_with_password};
 use egras::security::service::login::{login, LoginError, LoginInput};
 use egras::testing::{MockAppStateBuilder, TestPool};
-use common::seed::{grant_role, seed_org, seed_user_with_password};
 
 #[tokio::test]
 async fn login_happy_path_returns_token_and_memberships() {
