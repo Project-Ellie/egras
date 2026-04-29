@@ -124,4 +124,8 @@ async fn token_repository_drops_oldest_when_at_capacity() {
 
     assert!(state.tokens.find_valid("hash_0").await.unwrap().is_none());
     assert!(state.tokens.find_valid("hash_new").await.unwrap().is_some());
+
+    // hash_1 and hash_2 (not oldest) should still be valid.
+    assert!(state.tokens.find_valid("hash_1").await.unwrap().is_some());
+    assert!(state.tokens.find_valid("hash_2").await.unwrap().is_some());
 }
