@@ -1,20 +1,27 @@
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::OpenApi;
 
-// TODO: version is hardcoded — utoipa 4's info(version = ...) requires a string literal.
-// Revisit when we upgrade utoipa or add build-time spec post-processing.
 #[derive(OpenApi)]
 #[openapi(
     info(
         title = "egras API",
         version = "0.1.0",
-        description = "Enterprise-ready Rust application seed — tenants & audit",
+        description = "Enterprise-ready Rust application seed — tenants, security & audit",
     ),
     paths(
         crate::tenants::interface::post_create_organisation,
         crate::tenants::interface::get_list_my_organisations,
         crate::tenants::interface::get_list_members,
         crate::tenants::interface::post_assign_role,
+        crate::tenants::interface::post_add_user_to_organisation,
+        crate::tenants::interface::post_remove_user_from_organisation,
+        crate::security::interface::post_register,
+        crate::security::interface::post_login,
+        crate::security::interface::post_logout,
+        crate::security::interface::post_change_password,
+        crate::security::interface::post_switch_org,
+        crate::security::interface::post_password_reset_request,
+        crate::security::interface::post_password_reset_confirm,
     ),
     components(
         schemas(
@@ -25,12 +32,25 @@ use utoipa::OpenApi;
             crate::tenants::interface::PagedMembers,
             crate::tenants::interface::AssignRoleRequest,
             crate::tenants::interface::AssignRoleResponseBody,
+            crate::tenants::interface::AddUserToOrganisationRequest,
+            crate::tenants::interface::RemoveUserFromOrganisationRequest,
+            crate::security::interface::RegisterRequest,
+            crate::security::interface::RegisterResponse,
+            crate::security::interface::LoginRequest,
+            crate::security::interface::LoginResponse,
+            crate::security::interface::MembershipDto,
+            crate::security::interface::ChangePasswordRequest,
+            crate::security::interface::SwitchOrgRequest,
+            crate::security::interface::TokenResponse,
+            crate::security::interface::PasswordResetRequestBody,
+            crate::security::interface::PasswordResetConfirmBody,
             crate::errors::ErrorBody,
         ),
     ),
     modifiers(&SecurityAddon),
     tags(
         (name = "tenants", description = "Organisation and role management"),
+        (name = "security", description = "Authentication and user management"),
     ),
 )]
 pub struct ApiDoc;

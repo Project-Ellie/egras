@@ -24,6 +24,7 @@ async fn list_my_organisations_returns_only_caller_orgs() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_security_repos()
         .build();
 
     let page = list_my_organisations(
@@ -53,6 +54,7 @@ async fn list_my_organisations_paginates() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_security_repos()
         .build();
 
     let page1 = list_my_organisations(

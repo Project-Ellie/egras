@@ -1,1 +1,4 @@
-//! Security domain — populated in Plan 2.
+pub mod interface;
+pub mod model;
+pub mod persistence;
+pub mod service;

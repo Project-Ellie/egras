@@ -15,6 +15,12 @@ pub enum RepoError {
     UnknownUser(Uuid),
     #[error(transparent)]
     Db(#[from] sqlx::Error),
+    #[error("organisation or user not found")]
+    NotFound,
+    #[error("user is not a member of the organisation")]
+    NotMember,
+    #[error("cannot remove the last owner of an organisation")]
+    LastOwner,
 }
 
 #[async_trait]
@@ -48,4 +54,16 @@ pub trait OrganisationRepository: Send + Sync + 'static {
     /// Returns true iff `(user_id, organisation_id)` has at least one role row.
     /// Used by the cross-org rule in service layer.
     async fn is_member(&self, user_id: Uuid, organisation_id: Uuid) -> Result<bool, RepoError>;
+
+    /// Add a user to an org with the given role_code. Idempotent on the role row.
+    async fn add_member(
+        &self,
+        user_id: Uuid,
+        org_id: Uuid,
+        role_code: &str,
+    ) -> Result<(), RepoError>;
+
+    /// Remove all role rows for (user_id, org_id). Refuses with `LastOwner`
+    /// if this would leave the org with zero org_owner rows. Uses FOR UPDATE.
+    async fn remove_member_checked(&self, user_id: Uuid, org_id: Uuid) -> Result<(), RepoError>;
 }

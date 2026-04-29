@@ -55,6 +55,12 @@ pub async fn build_app(
     let roles: Arc<dyn crate::tenants::persistence::RoleRepository> = Arc::new(
         crate::tenants::persistence::RoleRepositoryPg::new(pool.clone()),
     );
+    let users: Arc<dyn crate::security::persistence::UserRepository> = Arc::new(
+        crate::security::persistence::UserRepositoryPg::new(pool.clone()),
+    );
+    let tokens: Arc<dyn crate::security::persistence::TokenRepository> = Arc::new(
+        crate::security::persistence::TokenRepositoryPg::new(pool.clone()),
+    );
 
     let state = AppState {
         pool: pool.clone(),
@@ -62,6 +68,14 @@ pub async fn build_app(
         list_audit_events,
         organisations,
         roles,
+        users,
+        tokens,
+        jwt_config: crate::auth::jwt::JwtConfig {
+            secret: cfg.jwt_secret.clone(),
+            issuer: cfg.jwt_issuer.clone(),
+            ttl_secs: cfg.jwt_ttl_secs,
+        },
+        password_reset_ttl_secs: cfg.password_reset_ttl_secs,
     };
 
     // 2. Public routes (no auth)
@@ -74,12 +88,16 @@ pub async fn build_app(
                 move || ready(pool.clone())
             }),
         )
+        .nest(
+            "/api/v1/security",
+            crate::security::interface::public_router(),
+        )
         .merge(
             SwaggerUi::new("/swagger-ui")
                 .url("/api-docs/openapi.json", crate::openapi::ApiDoc::openapi()),
         );
 
-    // 3. Protected routes — empty in Plan 1 (handlers added in Plan 2 & 3)
+    // 3. Protected routes
     let auth_layer = AuthLayer::new(
         cfg.jwt_secret.clone(),
         cfg.jwt_issuer.clone(),
@@ -87,6 +105,10 @@ pub async fn build_app(
     );
     let protected: Router<AppState> = Router::new()
         .nest("/api/v1/tenants", crate::tenants::interface::router())
+        .nest(
+            "/api/v1/security",
+            crate::security::interface::protected_router(),
+        )
         .layer(auth_layer);
 
     // 4. Compose

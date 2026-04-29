@@ -18,6 +18,7 @@ async fn assign_role_happy_path_was_new_true() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_security_repos()
         .build();
 
     let out = assign_role(
@@ -63,6 +64,7 @@ async fn assign_role_idempotent_was_new_false() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_security_repos()
         .build();
 
     // Re-assign the same role that is already held.
@@ -109,6 +111,7 @@ async fn assign_role_unknown_role_code_returns_error() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_security_repos()
         .build();
 
     let err = assign_role(
@@ -143,6 +146,7 @@ async fn assign_role_non_member_actor_gets_not_found() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_security_repos()
         .build();
 
     let err = assign_role(
