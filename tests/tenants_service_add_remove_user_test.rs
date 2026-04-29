@@ -1,6 +1,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
+use common::seed::{grant_role, seed_org, seed_user};
 use egras::tenants::service::add_user_to_organisation::{
     add_user_to_organisation, AddUserToOrganisationInput,
 };
@@ -8,7 +9,6 @@ use egras::tenants::service::remove_user_from_organisation::{
     remove_user_from_organisation, RemoveUserFromOrganisationError, RemoveUserFromOrganisationInput,
 };
 use egras::testing::{MockAppStateBuilder, TestPool};
-use common::seed::{grant_role, seed_org, seed_user};
 
 #[tokio::test]
 async fn add_user_to_organisation_happy_path() {
