@@ -57,3 +57,10 @@ pub fn decode_access_token(
     }
     Ok(data.claims)
 }
+
+#[derive(Debug, Clone)]
+pub struct JwtConfig {
+    pub secret: String,
+    pub issuer: String,
+    pub ttl_secs: i64,
+}

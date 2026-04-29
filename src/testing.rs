@@ -103,6 +103,10 @@ pub struct MockAppStateBuilder {
     list_audit_events: Option<Arc<dyn ListAuditEvents>>,
     organisations: Option<Arc<dyn crate::tenants::persistence::OrganisationRepository>>,
     roles: Option<Arc<dyn crate::tenants::persistence::RoleRepository>>,
+    users: Option<Arc<dyn crate::security::persistence::UserRepository>>,
+    tokens: Option<Arc<dyn crate::security::persistence::TokenRepository>>,
+    jwt_config: Option<crate::auth::jwt::JwtConfig>,
+    password_reset_ttl_secs: Option<i64>,
 }
 
 impl MockAppStateBuilder {
@@ -113,6 +117,10 @@ impl MockAppStateBuilder {
             list_audit_events: None,
             organisations: None,
             roles: None,
+            users: None,
+            tokens: None,
+            jwt_config: None,
+            password_reset_ttl_secs: None,
         }
     }
 
@@ -156,6 +164,31 @@ impl MockAppStateBuilder {
         self
     }
 
+    pub fn with_pg_security_repos(mut self) -> Self {
+        self.users = Some(Arc::new(
+            crate::security::persistence::UserRepositoryPg::new(self.pool.clone()),
+        ));
+        self.tokens = Some(Arc::new(
+            crate::security::persistence::TokenRepositoryPg::new(self.pool.clone()),
+        ));
+        self
+    }
+
+    pub fn users(mut self, r: Arc<dyn crate::security::persistence::UserRepository>) -> Self {
+        self.users = Some(r);
+        self
+    }
+
+    pub fn tokens(mut self, r: Arc<dyn crate::security::persistence::TokenRepository>) -> Self {
+        self.tokens = Some(r);
+        self
+    }
+
+    pub fn with_jwt_config(mut self, cfg: crate::auth::jwt::JwtConfig) -> Self {
+        self.jwt_config = Some(cfg);
+        self
+    }
+
     pub fn build(self) -> AppState {
         AppState {
             pool: self.pool,
@@ -163,6 +196,14 @@ impl MockAppStateBuilder {
             list_audit_events: self.list_audit_events.expect("list_audit_events not set"),
             organisations: self.organisations.expect("organisations not set"),
             roles: self.roles.expect("roles not set"),
+            users: self.users.expect("users not set"),
+            tokens: self.tokens.expect("tokens not set"),
+            jwt_config: self.jwt_config.unwrap_or_else(|| crate::auth::jwt::JwtConfig {
+                secret: "test-secret-32bytes-padding-here".to_string(),
+                issuer: "egras-test".to_string(),
+                ttl_secs: 3600,
+            }),
+            password_reset_ttl_secs: self.password_reset_ttl_secs.unwrap_or(900),
         }
     }
 }

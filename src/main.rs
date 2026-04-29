@@ -31,6 +31,7 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    dotenvy::dotenv().ok();
     let cli = Cli::parse();
     let cfg = AppConfig::from_env()?;
     init_tracing(&cfg);

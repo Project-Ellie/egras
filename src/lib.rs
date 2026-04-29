@@ -55,6 +55,12 @@ pub async fn build_app(
     let roles: Arc<dyn crate::tenants::persistence::RoleRepository> = Arc::new(
         crate::tenants::persistence::RoleRepositoryPg::new(pool.clone()),
     );
+    let users: Arc<dyn crate::security::persistence::UserRepository> = Arc::new(
+        crate::security::persistence::UserRepositoryPg::new(pool.clone()),
+    );
+    let tokens: Arc<dyn crate::security::persistence::TokenRepository> = Arc::new(
+        crate::security::persistence::TokenRepositoryPg::new(pool.clone()),
+    );
 
     let state = AppState {
         pool: pool.clone(),
@@ -62,6 +68,14 @@ pub async fn build_app(
         list_audit_events,
         organisations,
         roles,
+        users,
+        tokens,
+        jwt_config: crate::auth::jwt::JwtConfig {
+            secret: cfg.jwt_secret.clone(),
+            issuer: cfg.jwt_issuer.clone(),
+            ttl_secs: cfg.jwt_ttl_secs,
+        },
+        password_reset_ttl_secs: cfg.password_reset_ttl_secs,
     };
 
     // 2. Public routes (no auth)
