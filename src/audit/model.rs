@@ -322,4 +322,18 @@ impl AuditEvent {
         e.payload = json!({ "role_code": role_code });
         e
     }
+
+    pub fn admin_seeded(user_id: Uuid, org_id: Uuid, role_code: &str) -> Self {
+        let mut e = Self::base(
+            AuditCategory::SecurityStateChange,
+            "user.registered",
+            Outcome::Success,
+        );
+        // actor is None — this is a system/CLI operation, not a user request
+        e.target_type = Some("user".into());
+        e.target_id = Some(user_id);
+        e.target_organisation_id = Some(org_id);
+        e.payload = serde_json::json!({ "role_code": role_code, "via": "seed-admin" });
+        e
+    }
 }
