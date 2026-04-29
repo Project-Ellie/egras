@@ -107,3 +107,29 @@ impl Permission for TenantsRolesAssign {
         set.has(Self::CODE) || set.is_operator_over_tenants()
     }
 }
+
+/// Permission marker: `users.manage_all` — platform-level user administration.
+pub struct UsersManageAll;
+impl Permission for UsersManageAll {
+    const CODE: &'static str = "users.manage_all";
+}
+
+/// Permission marker: `tenants.members.add`.
+/// Accepts either the direct permission OR `tenants.manage_all` operator bypass.
+pub struct TenantsMembersAdd;
+impl Permission for TenantsMembersAdd {
+    const CODE: &'static str = "tenants.members.add";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has(Self::CODE) || set.is_operator_over_tenants()
+    }
+}
+
+/// Permission marker: `tenants.members.remove`.
+/// Accepts either the direct permission OR `tenants.manage_all` operator bypass.
+pub struct TenantsMembersRemove;
+impl Permission for TenantsMembersRemove {
+    const CODE: &'static str = "tenants.members.remove";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has(Self::CODE) || set.is_operator_over_tenants()
+    }
+}

@@ -73,12 +73,10 @@ impl TokenRepository for TokenRepositoryPg {
     }
 
     async fn consume(&self, token_id: Uuid) -> Result<(), TokenRepoError> {
-        sqlx::query(
-            "UPDATE password_reset_tokens SET consumed_at = NOW() WHERE id = $1",
-        )
-        .bind(token_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE password_reset_tokens SET consumed_at = NOW() WHERE id = $1")
+            .bind(token_id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 

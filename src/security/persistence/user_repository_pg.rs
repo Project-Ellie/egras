@@ -82,20 +82,15 @@ impl UserRepository for UserRepositoryPg {
         user_id: Uuid,
         new_hash: &str,
     ) -> Result<(), UserRepoError> {
-        sqlx::query(
-            "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
-        )
-        .bind(new_hash)
-        .bind(user_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2")
+            .bind(new_hash)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
-    async fn list_memberships(
-        &self,
-        user_id: Uuid,
-    ) -> Result<Vec<UserMembership>, UserRepoError> {
+    async fn list_memberships(&self, user_id: Uuid) -> Result<Vec<UserMembership>, UserRepoError> {
         let rows = sqlx::query_as::<_, MembershipRow>(
             "SELECT o.id AS org_id, o.name AS org_name, \
                     array_agg(DISTINCT r.code) AS role_codes, \

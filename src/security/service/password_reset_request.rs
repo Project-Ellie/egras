@@ -22,12 +22,6 @@ pub async fn password_reset_request(
     state: &AppState,
     input: PasswordResetRequestInput,
 ) -> Result<(), PasswordResetRequestError> {
-    // Always emit audit so timing is uniform.
-    let event = AuditEvent::password_reset_requested(&input.email);
-    if let Err(e) = state.audit_recorder.record(event).await {
-        warn!(error = %e, "audit record failed for password.reset_requested");
-    }
-
     let user = state
         .users
         .find_by_username_or_email(&input.email)
@@ -52,6 +46,11 @@ pub async fn password_reset_request(
         .insert(user.id, &token_hash, expires_at)
         .await
         .map_err(|e| PasswordResetRequestError::Internal(e.into()))?;
+
+    let event = AuditEvent::password_reset_requested(&input.email);
+    if let Err(e) = state.audit_recorder.record(event).await {
+        warn!(error = %e, "audit record failed for password.reset_requested");
+    }
 
     // Log reset URL at INFO (email delivery is out of scope for this seed).
     info!(

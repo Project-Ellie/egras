@@ -65,9 +65,5 @@ pub trait OrganisationRepository: Send + Sync + 'static {
 
     /// Remove all role rows for (user_id, org_id). Refuses with `LastOwner`
     /// if this would leave the org with zero org_owner rows. Uses FOR UPDATE.
-    async fn remove_member_checked(
-        &self,
-        user_id: Uuid,
-        org_id: Uuid,
-    ) -> Result<(), RepoError>;
+    async fn remove_member_checked(&self, user_id: Uuid, org_id: Uuid) -> Result<(), RepoError>;
 }

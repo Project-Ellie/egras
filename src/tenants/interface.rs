@@ -13,9 +13,13 @@ use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::auth::extractors::{
-    AuthedCaller, Perm, TenantsCreate, TenantsMembersList, TenantsRolesAssign,
+    AuthedCaller, Perm, TenantsCreate, TenantsMembersAdd, TenantsMembersList, TenantsMembersRemove,
+    TenantsRolesAssign,
 };
 use crate::errors::AppError;
+use crate::tenants::service::add_user_to_organisation::{
+    add_user_to_organisation, AddUserToOrganisationError, AddUserToOrganisationInput,
+};
 use crate::tenants::service::assign_role::{assign_role, AssignRoleError, AssignRoleInput};
 use crate::tenants::service::create_organisation::{
     create_organisation, CreateOrganisationError, CreateOrganisationInput,
@@ -27,6 +31,9 @@ use crate::tenants::service::list_my_organisations::{
 use crate::tenants::service::list_organisation_members::{
     list_organisation_members, ListMembersError, ListMembersInput,
 };
+use crate::tenants::service::remove_user_from_organisation::{
+    remove_user_from_organisation, RemoveUserFromOrganisationError, RemoveUserFromOrganisationInput,
+};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -34,6 +41,14 @@ pub fn router() -> Router<AppState> {
         .route("/me/organisations", get(get_list_my_organisations))
         .route("/organisations/:id/members", get(get_list_members))
         .route("/organisations/:id/memberships", post(post_assign_role))
+        .route(
+            "/add-user-to-organisation",
+            post(post_add_user_to_organisation),
+        )
+        .route(
+            "/remove-user-from-organisation",
+            post(post_remove_user_from_organisation),
+        )
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -361,6 +376,107 @@ fn map_assign_role_error(e: AssignRoleError) -> AppError {
         AssignRoleError::Repo(r) => AppError::Internal(anyhow::anyhow!(r)),
         AssignRoleError::Internal(err) => AppError::Internal(err),
     }
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct AddUserToOrganisationRequest {
+    pub user_id: Uuid,
+    pub org_id: Uuid,
+    pub role_code: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/tenants/add-user-to-organisation",
+    tag = "tenants",
+    request_body = AddUserToOrganisationRequest,
+    security(("bearer" = [])),
+    responses(
+        (status = 204, description = "User added to organisation"),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+        (status = 404, description = "Organisation or user not found", body = ErrorBody),
+    ),
+)]
+pub async fn post_add_user_to_organisation(
+    State(state): State<AppState>,
+    caller: AuthedCaller,
+    _perm: Perm<TenantsMembersAdd>,
+    Json(req): Json<AddUserToOrganisationRequest>,
+) -> Result<StatusCode, AppError> {
+    add_user_to_organisation(
+        &state,
+        caller.claims.sub,
+        caller.claims.org,
+        AddUserToOrganisationInput {
+            user_id: req.user_id,
+            org_id: req.org_id,
+            role_code: req.role_code,
+        },
+    )
+    .await
+    .map_err(|e| match e {
+        AddUserToOrganisationError::NotFound => AppError::NotFound {
+            resource: "organisation or user".into(),
+        },
+        AddUserToOrganisationError::UnknownRoleCode => {
+            let mut errs = std::collections::HashMap::new();
+            errs.insert("role_code".into(), vec!["unknown_role_code".into()]);
+            AppError::Validation { errors: errs }
+        }
+        AddUserToOrganisationError::Repo(e) => AppError::Internal(anyhow::anyhow!(e)),
+        AddUserToOrganisationError::Internal(e) => AppError::Internal(e),
+    })?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct RemoveUserFromOrganisationRequest {
+    pub user_id: Uuid,
+    pub org_id: Uuid,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/tenants/remove-user-from-organisation",
+    tag = "tenants",
+    request_body = RemoveUserFromOrganisationRequest,
+    security(("bearer" = [])),
+    responses(
+        (status = 204, description = "User removed"),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+        (status = 404, description = "User is not a member", body = ErrorBody),
+        (status = 409, description = "Cannot remove last owner", body = ErrorBody),
+    ),
+)]
+pub async fn post_remove_user_from_organisation(
+    State(state): State<AppState>,
+    caller: AuthedCaller,
+    _perm: Perm<TenantsMembersRemove>,
+    Json(req): Json<RemoveUserFromOrganisationRequest>,
+) -> Result<StatusCode, AppError> {
+    remove_user_from_organisation(
+        &state,
+        caller.claims.sub,
+        caller.claims.org,
+        RemoveUserFromOrganisationInput {
+            user_id: req.user_id,
+            org_id: req.org_id,
+        },
+    )
+    .await
+    .map_err(|e| match e {
+        RemoveUserFromOrganisationError::NotMember => AppError::NotFound {
+            resource: "membership".into(),
+        },
+        RemoveUserFromOrganisationError::LastOwner => AppError::Conflict {
+            reason: "cannot remove the last owner".into(),
+        },
+        RemoveUserFromOrganisationError::Repo(e) => AppError::Internal(anyhow::anyhow!(e)),
+        RemoveUserFromOrganisationError::Internal(e) => AppError::Internal(e),
+    })?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 fn validation_errors_to_map(e: validator::ValidationErrors) -> HashMap<String, Vec<String>> {

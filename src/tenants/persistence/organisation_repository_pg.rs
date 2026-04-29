@@ -227,12 +227,10 @@ impl OrganisationRepository for OrganisationRepositoryPg {
         org_id: Uuid,
         role_code: &str,
     ) -> Result<(), RepoError> {
-        let role_id: Option<Uuid> = sqlx::query_scalar(
-            "SELECT id FROM roles WHERE code = $1",
-        )
-        .bind(role_code)
-        .fetch_optional(&self.pool)
-        .await?;
+        let role_id: Option<Uuid> = sqlx::query_scalar("SELECT id FROM roles WHERE code = $1")
+            .bind(role_code)
+            .fetch_optional(&self.pool)
+            .await?;
 
         let role_id = role_id.ok_or_else(|| RepoError::UnknownRoleCode(role_code.to_string()))?;
 
@@ -257,11 +255,7 @@ impl OrganisationRepository for OrganisationRepositoryPg {
         Ok(())
     }
 
-    async fn remove_member_checked(
-        &self,
-        user_id: Uuid,
-        org_id: Uuid,
-    ) -> Result<(), RepoError> {
+    async fn remove_member_checked(&self, user_id: Uuid, org_id: Uuid) -> Result<(), RepoError> {
         let mut tx = self.pool.begin().await?;
 
         // Lock and check membership.

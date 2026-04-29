@@ -35,8 +35,5 @@ pub trait UserRepository: Send + Sync + 'static {
         new_hash: &str,
     ) -> Result<(), UserRepoError>;
 
-    async fn list_memberships(
-        &self,
-        user_id: Uuid,
-    ) -> Result<Vec<UserMembership>, UserRepoError>;
+    async fn list_memberships(&self, user_id: Uuid) -> Result<Vec<UserMembership>, UserRepoError>;
 }

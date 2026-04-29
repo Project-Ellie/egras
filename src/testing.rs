@@ -198,11 +198,13 @@ impl MockAppStateBuilder {
             roles: self.roles.expect("roles not set"),
             users: self.users.expect("users not set"),
             tokens: self.tokens.expect("tokens not set"),
-            jwt_config: self.jwt_config.unwrap_or_else(|| crate::auth::jwt::JwtConfig {
-                secret: "test-secret-32bytes-padding-here".to_string(),
-                issuer: "egras-test".to_string(),
-                ttl_secs: 3600,
-            }),
+            jwt_config: self
+                .jwt_config
+                .unwrap_or_else(|| crate::auth::jwt::JwtConfig {
+                    secret: "test-secret-32bytes-padding-here".to_string(),
+                    issuer: "egras-test".to_string(),
+                    ttl_secs: 3600,
+                }),
             password_reset_ttl_secs: self.password_reset_ttl_secs.unwrap_or(900),
         }
     }
