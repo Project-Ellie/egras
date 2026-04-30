@@ -211,7 +211,7 @@ async fn list_users_search_by_username() {
 async fn list_users_search_by_email() {
     let pool = TestPool::fresh().await.pool;
     seed_user(&pool, "alice").await; // email: alice@test
-    seed_user(&pool, "bob").await;   // email: bob@test
+    seed_user(&pool, "bob").await; // email: bob@test
 
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
@@ -289,7 +289,10 @@ async fn list_memberships_for_users_batch() {
         .expect("batch memberships");
 
     assert_eq!(memberships.len(), 2);
-    let alice_m: Vec<_> = memberships.iter().filter(|(uid, _)| *uid == alice).collect();
+    let alice_m: Vec<_> = memberships
+        .iter()
+        .filter(|(uid, _)| *uid == alice)
+        .collect();
     let bob_m: Vec<_> = memberships.iter().filter(|(uid, _)| *uid == bob).collect();
     assert_eq!(alice_m.len(), 1);
     assert_eq!(alice_m[0].1.org_id, org1);

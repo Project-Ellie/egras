@@ -1,6 +1,6 @@
 pub mod bootstrap_seed_admin;
-pub mod list_users;
 pub mod change_password;
+pub mod list_users;
 pub mod login;
 pub mod logout;
 pub mod password_hash;

@@ -32,7 +32,12 @@ async fn insufficient_permission_returns_403() {
     let alice = seed_user(&pool, "alice").await;
     let cfg = test_config();
     // Alice has no org role — no permissions loaded. Use a random org UUID.
-    let token = bearer(&cfg.jwt_secret, &cfg.jwt_issuer, alice, uuid::Uuid::now_v7());
+    let token = bearer(
+        &cfg.jwt_secret,
+        &cfg.jwt_issuer,
+        alice,
+        uuid::Uuid::now_v7(),
+    );
     let app = TestApp::spawn(pool, cfg).await;
 
     let resp = reqwest::Client::new()

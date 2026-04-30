@@ -49,8 +49,7 @@ pub async fn list_users(
 
     let cursor = match input.after.as_deref() {
         Some(raw) => Some(
-            cursor_codec::decode::<UserCursor>(raw)
-                .map_err(|_| ListUsersError::InvalidCursor)?,
+            cursor_codec::decode::<UserCursor>(raw).map_err(|_| ListUsersError::InvalidCursor)?,
         ),
         None => None,
     };
@@ -82,10 +81,7 @@ pub async fn list_users(
 
     // Batch-fetch memberships.
     let user_ids: Vec<Uuid> = users.iter().map(|u| u.id).collect();
-    let raw_memberships = state
-        .users
-        .list_memberships_for_users(&user_ids)
-        .await?;
+    let raw_memberships = state.users.list_memberships_for_users(&user_ids).await?;
 
     // Group memberships by user_id.
     let mut by_user: HashMap<Uuid, Vec<UserMembership>> = HashMap::new();

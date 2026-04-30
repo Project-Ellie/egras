@@ -141,24 +141,21 @@ impl UserRepository for UserRepositoryPg {
                 .fetch_all(&self.pool)
                 .await?
             }
-            (Some(oid), None, None) => {
-                sqlx::query_as::<_, UserRow>(
-                    "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
+            (Some(oid), None, None) => sqlx::query_as::<_, UserRow>(
+                "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
                      FROM users u \
                      JOIN user_organisation_roles uor ON uor.user_id = u.id \
                      WHERE uor.organisation_id = $1 \
                      GROUP BY u.id \
                      ORDER BY u.created_at ASC, u.id ASC \
                      LIMIT $2",
-                )
-                .bind(oid)
-                .bind(limit as i64)
-                .fetch_all(&self.pool)
-                .await?
-            }
-            (Some(oid), None, Some(c)) => {
-                sqlx::query_as::<_, UserRow>(
-                    "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
+            )
+            .bind(oid)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await?,
+            (Some(oid), None, Some(c)) => sqlx::query_as::<_, UserRow>(
+                "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
                      FROM users u \
                      JOIN user_organisation_roles uor ON uor.user_id = u.id \
                      WHERE uor.organisation_id = $1 \
@@ -166,14 +163,13 @@ impl UserRepository for UserRepositoryPg {
                      GROUP BY u.id \
                      ORDER BY u.created_at ASC, u.id ASC \
                      LIMIT $4",
-                )
-                .bind(oid)
-                .bind(c.created_at)
-                .bind(c.user_id)
-                .bind(limit as i64)
-                .fetch_all(&self.pool)
-                .await?
-            }
+            )
+            .bind(oid)
+            .bind(c.created_at)
+            .bind(c.user_id)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await?,
             (None, Some(query), None) => {
                 let pattern = format!("%{query}%");
                 sqlx::query_as::<_, UserRow>(

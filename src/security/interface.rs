@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use axum::{extract::{Query, State}, http::StatusCode, routing::post, Json, Router};
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    routing::post,
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -8,12 +13,12 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::audit::model::AuditEvent;
 use crate::auth::extractors::{AuthedCaller, Perm, TenantsMembersAdd, UsersRead};
-use crate::security::service::list_users::{list_users, ListUsersError, ListUsersInput};
 use crate::errors::AppError;
 use crate::security::model::UserMembership;
 use crate::security::service::change_password::{
     change_password, ChangePasswordError, ChangePasswordInput,
 };
+use crate::security::service::list_users::{list_users, ListUsersError, ListUsersInput};
 use crate::security::service::login::{login, LoginError, LoginInput};
 use crate::security::service::logout::{logout, LogoutError};
 use crate::security::service::password_reset_confirm::{
@@ -411,7 +416,11 @@ pub async fn get_list_users(
     Query(q): Query<ListUsersQuery>,
 ) -> Result<Json<ListUsersResponse>, AppError> {
     let is_operator = caller.permissions.is_operator_over_users();
-    let caller_org_id = if is_operator { None } else { Some(caller.claims.org) };
+    let caller_org_id = if is_operator {
+        None
+    } else {
+        Some(caller.claims.org)
+    };
 
     let limit = q.limit.unwrap_or(20);
     if !(1..=100).contains(&limit) {
