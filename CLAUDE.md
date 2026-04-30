@@ -66,5 +66,6 @@ Tests live in `/tests/` organized by domain and layer (`service/`, `persistence/
 ## Implementation status
 
 - **Plan 1 + 2a (merged):** Tenants domain, auth middleware, audit infrastructure
-- **Plan 2b (in progress on `feat/security`):** Security domain (register, login, logout, change-password)
-- **Plan 3 (upcoming):** `seed-admin` and `dump-openapi` CLI subcommands, password reset, switch-org
+- **Plan 2b (merged):** Security domain (register, login, logout, change-password)
+- **Plan 3 (merged):** `seed-admin` and `dump-openapi` CLI subcommands
+- **Plan 4 (merged):** OpenAPI drift check in CI, README quickstart
