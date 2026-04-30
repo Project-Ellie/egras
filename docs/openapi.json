@@ -1,3 +1,22 @@
+   Compiling tokio v1.52.1
+   Compiling bitflags v2.11.1
+   Compiling sync_wrapper v1.0.2
+   Compiling axum-core v0.4.5
+   Compiling sqlx-postgres v0.8.6
+   Compiling tower-http v0.5.2
+   Compiling tokio-stream v0.1.18
+   Compiling hyper v1.9.0
+   Compiling tower v0.5.3
+   Compiling sqlx-macros-core v0.8.6
+   Compiling sqlx-core v0.8.6
+   Compiling hyper-util v0.1.20
+   Compiling axum v0.7.9
+   Compiling sqlx-macros v0.8.6
+   Compiling utoipa-swagger-ui v7.1.0
+   Compiling sqlx v0.8.6
+   Compiling egras v0.1.0 (/Users/wgiersche/workspace/Project-Ellie/egras/.worktrees/feat-list-users)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.59s
+     Running `target/debug/egras dump-openapi`
 {
   "openapi": "3.0.3",
   "info": {
@@ -776,6 +795,102 @@
           }
         ]
       }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": [
+          "security"
+        ],
+        "operationId": "get_list_users",
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "org_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "nullable": true
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated user list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListUsersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid cursor or limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -909,6 +1024,24 @@
           "type": {
             "type": "string",
             "description": "A URI reference identifying the error type."
+          }
+        }
+      },
+      "ListUsersResponse": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserSummaryDto"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -1170,6 +1303,38 @@
         ],
         "properties": {
           "token": {
+            "type": "string"
+          }
+        }
+      },
+      "UserSummaryDto": {
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "email",
+          "created_at",
+          "memberships"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "memberships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MembershipDto"
+            }
+          },
+          "username": {
             "type": "string"
           }
         }

@@ -22,6 +22,7 @@ use utoipa::OpenApi;
         crate::security::interface::post_switch_org,
         crate::security::interface::post_password_reset_request,
         crate::security::interface::post_password_reset_confirm,
+        crate::security::interface::get_list_users,
     ),
     components(
         schemas(
@@ -44,6 +45,8 @@ use utoipa::OpenApi;
             crate::security::interface::TokenResponse,
             crate::security::interface::PasswordResetRequestBody,
             crate::security::interface::PasswordResetConfirmBody,
+            crate::security::interface::UserSummaryDto,
+            crate::security::interface::ListUsersResponse,
             crate::errors::ErrorBody,
         ),
     ),
