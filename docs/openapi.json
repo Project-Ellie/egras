@@ -1101,9 +1101,14 @@
         "required": [
           "org_id",
           "org_name",
-          "role_codes"
+          "role_codes",
+          "joined_at"
         ],
         "properties": {
+          "joined_at": {
+            "type": "string",
+            "format": "date-time"
+          },
           "org_id": {
             "type": "string",
             "format": "uuid"
