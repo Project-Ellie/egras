@@ -133,3 +133,15 @@ impl Permission for TenantsMembersRemove {
         set.has(Self::CODE) || set.is_operator_over_tenants()
     }
 }
+
+/// Permission marker: list platform users.
+/// CODE is `tenants.members.list` (the existing DB permission for tenant admins) rather
+/// than a new `users.read` permission, intentionally avoiding a schema migration.
+/// `accepts()` also grants access to operators via `users.manage_all`.
+pub struct UsersRead;
+impl Permission for UsersRead {
+    const CODE: &'static str = "tenants.members.list";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has("tenants.members.list") || set.is_operator_over_users()
+    }
+}

@@ -107,6 +107,187 @@ impl UserRepository for UserRepositoryPg {
         .await?;
         Ok(rows.into_iter().map(Into::into).collect())
     }
+
+    async fn list_users(
+        &self,
+        org_id: Option<Uuid>,
+        q: Option<&str>,
+        cursor: Option<crate::security::model::UserCursor>,
+        limit: u32,
+    ) -> Result<Vec<User>, UserRepoError> {
+        let rows = match (org_id, q, cursor) {
+            (None, None, None) => {
+                sqlx::query_as::<_, UserRow>(
+                    "SELECT id, username, email, password_hash, created_at, updated_at \
+                     FROM users \
+                     ORDER BY created_at ASC, id ASC \
+                     LIMIT $1",
+                )
+                .bind(limit as i64)
+                .fetch_all(&self.pool)
+                .await?
+            }
+            (None, None, Some(c)) => {
+                sqlx::query_as::<_, UserRow>(
+                    "SELECT id, username, email, password_hash, created_at, updated_at \
+                     FROM users \
+                     WHERE (created_at, id) > ($1, $2) \
+                     ORDER BY created_at ASC, id ASC \
+                     LIMIT $3",
+                )
+                .bind(c.created_at)
+                .bind(c.user_id)
+                .bind(limit as i64)
+                .fetch_all(&self.pool)
+                .await?
+            }
+            (Some(oid), None, None) => sqlx::query_as::<_, UserRow>(
+                "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
+                     FROM users u \
+                     JOIN user_organisation_roles uor ON uor.user_id = u.id \
+                     WHERE uor.organisation_id = $1 \
+                     GROUP BY u.id \
+                     ORDER BY u.created_at ASC, u.id ASC \
+                     LIMIT $2",
+            )
+            .bind(oid)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await?,
+            (Some(oid), None, Some(c)) => sqlx::query_as::<_, UserRow>(
+                "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
+                     FROM users u \
+                     JOIN user_organisation_roles uor ON uor.user_id = u.id \
+                     WHERE uor.organisation_id = $1 \
+                       AND (u.created_at, u.id) > ($2, $3) \
+                     GROUP BY u.id \
+                     ORDER BY u.created_at ASC, u.id ASC \
+                     LIMIT $4",
+            )
+            .bind(oid)
+            .bind(c.created_at)
+            .bind(c.user_id)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await?,
+            (None, Some(query), None) => {
+                let pattern = format!("%{query}%");
+                sqlx::query_as::<_, UserRow>(
+                    "SELECT id, username, email, password_hash, created_at, updated_at \
+                     FROM users \
+                     WHERE username ILIKE $1 OR email ILIKE $1 \
+                     ORDER BY created_at ASC, id ASC \
+                     LIMIT $2",
+                )
+                .bind(pattern)
+                .bind(limit as i64)
+                .fetch_all(&self.pool)
+                .await?
+            }
+            (None, Some(query), Some(c)) => {
+                let pattern = format!("%{query}%");
+                sqlx::query_as::<_, UserRow>(
+                    "SELECT id, username, email, password_hash, created_at, updated_at \
+                     FROM users \
+                     WHERE (username ILIKE $1 OR email ILIKE $1) \
+                       AND (created_at, id) > ($2, $3) \
+                     ORDER BY created_at ASC, id ASC \
+                     LIMIT $4",
+                )
+                .bind(pattern)
+                .bind(c.created_at)
+                .bind(c.user_id)
+                .bind(limit as i64)
+                .fetch_all(&self.pool)
+                .await?
+            }
+            (Some(oid), Some(query), None) => {
+                let pattern = format!("%{query}%");
+                sqlx::query_as::<_, UserRow>(
+                    "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
+                     FROM users u \
+                     JOIN user_organisation_roles uor ON uor.user_id = u.id \
+                     WHERE uor.organisation_id = $1 \
+                       AND (u.username ILIKE $2 OR u.email ILIKE $2) \
+                     GROUP BY u.id \
+                     ORDER BY u.created_at ASC, u.id ASC \
+                     LIMIT $3",
+                )
+                .bind(oid)
+                .bind(pattern)
+                .bind(limit as i64)
+                .fetch_all(&self.pool)
+                .await?
+            }
+            (Some(oid), Some(query), Some(c)) => {
+                let pattern = format!("%{query}%");
+                sqlx::query_as::<_, UserRow>(
+                    "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
+                     FROM users u \
+                     JOIN user_organisation_roles uor ON uor.user_id = u.id \
+                     WHERE uor.organisation_id = $1 \
+                       AND (u.username ILIKE $2 OR u.email ILIKE $2) \
+                       AND (u.created_at, u.id) > ($3, $4) \
+                     GROUP BY u.id \
+                     ORDER BY u.created_at ASC, u.id ASC \
+                     LIMIT $5",
+                )
+                .bind(oid)
+                .bind(pattern)
+                .bind(c.created_at)
+                .bind(c.user_id)
+                .bind(limit as i64)
+                .fetch_all(&self.pool)
+                .await?
+            }
+        };
+        Ok(rows.into_iter().map(Into::into).collect())
+    }
+
+    async fn list_memberships_for_users(
+        &self,
+        user_ids: &[Uuid],
+    ) -> Result<Vec<(Uuid, crate::security::model::UserMembership)>, UserRepoError> {
+        if user_ids.is_empty() {
+            return Ok(vec![]);
+        }
+        #[derive(sqlx::FromRow)]
+        struct BulkMembershipRow {
+            user_id: Uuid,
+            org_id: Uuid,
+            org_name: String,
+            role_codes: Vec<String>,
+            joined_at: DateTime<Utc>,
+        }
+        let rows = sqlx::query_as::<_, BulkMembershipRow>(
+            "SELECT uor.user_id, o.id AS org_id, o.name AS org_name, \
+                    array_agg(DISTINCT r.code) AS role_codes, \
+                    MIN(uor.created_at) AS joined_at \
+             FROM user_organisation_roles uor \
+             JOIN organisations o ON o.id = uor.organisation_id \
+             JOIN roles r ON r.id = uor.role_id \
+             WHERE uor.user_id = ANY($1) \
+             GROUP BY uor.user_id, o.id, o.name \
+             ORDER BY uor.user_id, joined_at ASC",
+        )
+        .bind(user_ids)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                (
+                    r.user_id,
+                    crate::security::model::UserMembership {
+                        org_id: r.org_id,
+                        org_name: r.org_name,
+                        role_codes: r.role_codes,
+                        joined_at: r.joined_at,
+                    },
+                )
+            })
+            .collect())
+    }
 }
 
 #[derive(sqlx::FromRow)]

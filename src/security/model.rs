@@ -30,3 +30,9 @@ pub struct PasswordResetToken {
     pub used_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UserCursor {
+    pub created_at: DateTime<Utc>,
+    pub user_id: Uuid,
+}

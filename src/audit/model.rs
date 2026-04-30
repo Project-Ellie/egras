@@ -323,6 +323,15 @@ impl AuditEvent {
         e
     }
 
+    // TODO: replace SecurityAuth with a DataAccess/SecurityRead category once one exists.
+    pub fn users_list(actor_user_id: Uuid, actor_org_id: Uuid) -> Self {
+        let mut e = Self::base(AuditCategory::SecurityAuth, "users.list", Outcome::Success);
+        e.actor_user_id = Some(actor_user_id);
+        e.actor_organisation_id = Some(actor_org_id);
+        e.target_type = Some("user".into());
+        e
+    }
+
     pub fn admin_seeded(user_id: Uuid, org_id: Uuid, role_code: &str) -> Self {
         let mut e = Self::base(
             AuditCategory::SecurityStateChange,

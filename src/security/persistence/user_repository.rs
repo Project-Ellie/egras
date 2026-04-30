@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::security::model::{User, UserMembership};
+use crate::security::model::{User, UserCursor, UserMembership};
 
 #[derive(Debug, thiserror::Error)]
 pub enum UserRepoError {
@@ -36,4 +36,17 @@ pub trait UserRepository: Send + Sync + 'static {
     ) -> Result<(), UserRepoError>;
 
     async fn list_memberships(&self, user_id: Uuid) -> Result<Vec<UserMembership>, UserRepoError>;
+
+    async fn list_users(
+        &self,
+        org_id: Option<Uuid>,
+        q: Option<&str>,
+        cursor: Option<UserCursor>,
+        limit: u32,
+    ) -> Result<Vec<User>, UserRepoError>;
+
+    async fn list_memberships_for_users(
+        &self,
+        user_ids: &[Uuid],
+    ) -> Result<Vec<(Uuid, UserMembership)>, UserRepoError>;
 }

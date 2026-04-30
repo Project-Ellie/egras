@@ -1,17 +1,24 @@
 use std::collections::HashMap;
 
-use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    routing::post,
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::auth::extractors::{AuthedCaller, Perm, TenantsMembersAdd};
+use crate::audit::model::AuditEvent;
+use crate::auth::extractors::{AuthedCaller, Perm, TenantsMembersAdd, UsersRead};
 use crate::errors::AppError;
 use crate::security::model::UserMembership;
 use crate::security::service::change_password::{
     change_password, ChangePasswordError, ChangePasswordInput,
 };
+use crate::security::service::list_users::{list_users, ListUsersError, ListUsersInput};
 use crate::security::service::login::{login, LoginError, LoginInput};
 use crate::security::service::logout::{logout, LogoutError};
 use crate::security::service::password_reset_confirm::{
@@ -69,6 +76,7 @@ pub struct MembershipDto {
     pub org_id: Uuid,
     pub org_name: String,
     pub role_codes: Vec<String>,
+    pub joined_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -104,6 +112,29 @@ pub struct PasswordResetRequestBody {
 pub struct PasswordResetConfirmBody {
     pub token: String,
     pub new_password: String,
+}
+
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+pub struct ListUsersQuery {
+    pub after: Option<String>,
+    pub limit: Option<u32>,
+    pub org_id: Option<Uuid>,
+    pub q: Option<String>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct UserSummaryDto {
+    pub id: Uuid,
+    pub username: String,
+    pub email: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub memberships: Vec<MembershipDto>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ListUsersResponse {
+    pub items: Vec<UserSummaryDto>,
+    pub next_cursor: Option<String>,
 }
 
 // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -205,6 +236,7 @@ pub async fn post_login(
                 org_id: m.org_id,
                 org_name: m.org_name,
                 role_codes: m.role_codes,
+                joined_at: m.joined_at,
             })
             .collect(),
     }))
@@ -362,6 +394,85 @@ pub async fn post_password_reset_confirm(
         PasswordResetConfirmError::Internal(e) => AppError::Internal(e),
     })?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/users",
+    tag = "security",
+    params(ListUsersQuery),
+    security(("bearer" = [])),
+    responses(
+        (status = 200, description = "Paginated user list", body = ListUsersResponse),
+        (status = 400, description = "Invalid cursor or limit", body = ErrorBody),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+    ),
+)]
+pub async fn get_list_users(
+    State(state): State<AppState>,
+    caller: AuthedCaller,
+    _perm: Perm<UsersRead>,
+    Query(q): Query<ListUsersQuery>,
+) -> Result<Json<ListUsersResponse>, AppError> {
+    let is_operator = caller.permissions.is_operator_over_users();
+    let caller_org_id = if is_operator {
+        None
+    } else {
+        Some(caller.claims.org)
+    };
+
+    let limit = q.limit.unwrap_or(20);
+    if !(1..=100).contains(&limit) {
+        return Err(field_error("limit", "invalid_limit"));
+    }
+
+    let out = list_users(
+        &state,
+        caller.claims.sub,
+        is_operator,
+        caller_org_id,
+        ListUsersInput {
+            org_id: q.org_id,
+            q: q.q,
+            after: q.after,
+            limit,
+        },
+    )
+    .await
+    .map_err(|e| match e {
+        ListUsersError::InvalidCursor => field_error("after", "invalid_cursor"),
+        ListUsersError::Repo(e) => AppError::Internal(e.into()),
+    })?;
+
+    let event = AuditEvent::users_list(caller.claims.sub, caller.claims.org);
+    if let Err(e) = state.audit_recorder.record(event).await {
+        tracing::warn!(error = %e, "audit record failed for users.list");
+    }
+
+    Ok(Json(ListUsersResponse {
+        items: out
+            .items
+            .into_iter()
+            .map(|u| UserSummaryDto {
+                id: u.id,
+                username: u.username,
+                email: u.email,
+                created_at: u.created_at,
+                memberships: u
+                    .memberships
+                    .into_iter()
+                    .map(|m| MembershipDto {
+                        org_id: m.org_id,
+                        org_name: m.org_name,
+                        role_codes: m.role_codes,
+                        joined_at: m.joined_at,
+                    })
+                    .collect(),
+            })
+            .collect(),
+        next_cursor: out.next_cursor,
+    }))
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

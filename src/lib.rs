@@ -109,6 +109,10 @@ pub async fn build_app(
             "/api/v1/security",
             crate::security::interface::protected_router(),
         )
+        .route(
+            "/api/v1/users",
+            axum::routing::get(crate::security::interface::get_list_users),
+        )
         .layer(auth_layer);
 
     // 4. Compose
