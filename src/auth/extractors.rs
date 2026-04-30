@@ -133,3 +133,13 @@ impl Permission for TenantsMembersRemove {
         set.has(Self::CODE) || set.is_operator_over_tenants()
     }
 }
+
+/// Permission marker: list platform users.
+/// Accepts `users.manage_all` (operator) OR `tenants.members.list` (tenant admin).
+pub struct UsersRead;
+impl Permission for UsersRead {
+    const CODE: &'static str = "tenants.members.list";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has("tenants.members.list") || set.is_operator_over_users()
+    }
+}
