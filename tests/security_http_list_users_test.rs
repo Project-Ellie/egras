@@ -186,3 +186,51 @@ async fn search_q_filters_results() {
     assert_eq!(items[0]["username"], "alice");
     app.stop().await;
 }
+
+#[tokio::test]
+async fn invalid_cursor_returns_400() {
+    let pool = TestPool::fresh().await.pool;
+    let alice = seed_user(&pool, "alice").await;
+    let org = seed_org(&pool, "acme", "retail").await;
+    grant_role(&pool, alice, org, "org_owner").await;
+
+    let cfg = test_config();
+    let token = bearer(&cfg.jwt_secret, &cfg.jwt_issuer, alice, org);
+    let app = TestApp::spawn(pool, cfg).await;
+
+    let resp = reqwest::Client::new()
+        .get(format!("{}/api/v1/users?after=not-valid!!", app.base_url))
+        .header("authorization", token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    let errors = &body["errors"];
+    assert_eq!(errors["after"][0], "invalid_cursor");
+    app.stop().await;
+}
+
+#[tokio::test]
+async fn invalid_limit_returns_400() {
+    let pool = TestPool::fresh().await.pool;
+    let alice = seed_user(&pool, "alice").await;
+    let org = seed_org(&pool, "acme", "retail").await;
+    grant_role(&pool, alice, org, "org_owner").await;
+
+    let cfg = test_config();
+    let token = bearer(&cfg.jwt_secret, &cfg.jwt_issuer, alice, org);
+    let app = TestApp::spawn(pool, cfg).await;
+
+    let resp = reqwest::Client::new()
+        .get(format!("{}/api/v1/users?limit=0", app.base_url))
+        .header("authorization", token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    let errors = &body["errors"];
+    assert_eq!(errors["limit"][0], "invalid_limit");
+    app.stop().await;
+}

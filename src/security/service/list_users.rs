@@ -40,12 +40,12 @@ pub enum ListUsersError {
 
 pub async fn list_users(
     state: &AppState,
-    _caller: Uuid,
+    _caller: Uuid, // reserved for future per-caller rate limiting
     is_operator: bool,
     caller_org_id: Option<Uuid>,
     input: ListUsersInput,
 ) -> Result<ListUsersOutput, ListUsersError> {
-    let limit = input.limit.clamp(1, 100);
+    let limit = input.limit;
 
     let cursor = match input.after.as_deref() {
         Some(raw) => Some(

@@ -71,6 +71,7 @@ pub struct MembershipDto {
     pub org_id: Uuid,
     pub org_name: String,
     pub role_codes: Vec<String>,
+    pub joined_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -230,6 +231,7 @@ pub async fn post_login(
                 org_id: m.org_id,
                 org_name: m.org_name,
                 role_codes: m.role_codes,
+                joined_at: m.joined_at,
             })
             .collect(),
     }))
@@ -455,6 +457,7 @@ pub async fn get_list_users(
                         org_id: m.org_id,
                         org_name: m.org_name,
                         role_codes: m.role_codes,
+                        joined_at: m.joined_at,
                     })
                     .collect(),
             })

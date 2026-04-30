@@ -135,7 +135,9 @@ impl Permission for TenantsMembersRemove {
 }
 
 /// Permission marker: list platform users.
-/// Accepts `users.manage_all` (operator) OR `tenants.members.list` (tenant admin).
+/// CODE is `tenants.members.list` (the existing DB permission for tenant admins) rather
+/// than a new `users.read` permission, intentionally avoiding a schema migration.
+/// `accepts()` also grants access to operators via `users.manage_all`.
 pub struct UsersRead;
 impl Permission for UsersRead {
     const CODE: &'static str = "tenants.members.list";
