@@ -50,7 +50,7 @@ pub async fn register_user(
     if username.is_empty() || username.len() > 64 {
         return Err(RegisterUserError::InvalidUsername);
     }
-    if !email.contains('@') || email.len() > 254 {
+    if !is_valid_email(&email) {
         return Err(RegisterUserError::InvalidEmail);
     }
     if input.password.len() < 8 {
@@ -90,4 +90,45 @@ pub async fn register_user(
     }
 
     Ok(RegisterUserOutput { user_id: user.id })
+}
+
+fn is_valid_email(email: &str) -> bool {
+    if email.len() > 254 {
+        return false;
+    }
+    match email.splitn(2, '@').collect::<Vec<_>>().as_slice() {
+        [local, domain] => {
+            !local.is_empty()
+                && !domain.is_empty()
+                && domain.contains('.')
+                && !domain.ends_with('.')
+                && !domain.starts_with('.')
+        }
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_valid_email;
+
+    #[test]
+    fn valid_emails_pass() {
+        assert!(is_valid_email("user@example.com"));
+        assert!(is_valid_email("a@b.io"));
+        assert!(is_valid_email("foo.bar+baz@sub.domain.org"));
+    }
+
+    #[test]
+    fn invalid_emails_fail() {
+        assert!(!is_valid_email(""));
+        assert!(!is_valid_email("@"));
+        assert!(!is_valid_email("a@"));
+        assert!(!is_valid_email("@b"));
+        assert!(!is_valid_email("nodomain"));
+        assert!(!is_valid_email("user@.com"));
+        assert!(!is_valid_email("user@com."));
+        assert!(!is_valid_email("user@nodot"));
+        assert!(!is_valid_email(&"a".repeat(255)));
+    }
 }
