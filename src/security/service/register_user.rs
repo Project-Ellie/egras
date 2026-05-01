@@ -3,8 +3,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::audit::model::AuditEvent;
-use crate::security::persistence::UserRepoError;
-use crate::tenants::persistence::RepoError as OrgRepoError;
+use crate::security::persistence::user_repository::CreateAndAddError;
 
 #[derive(Debug, Clone)]
 pub struct RegisterUserInput {
@@ -63,24 +62,20 @@ pub async fn register_user(
 
     let user = state
         .users
-        .create(&username, &email, &hash)
+        .create_and_add_to_org(
+            &username,
+            &email,
+            &hash,
+            input.target_org_id,
+            &input.role_code,
+        )
         .await
         .map_err(|e| match e {
-            UserRepoError::DuplicateUsername(_) => RegisterUserError::DuplicateUsername,
-            UserRepoError::DuplicateEmail(_) => RegisterUserError::DuplicateEmail,
-            UserRepoError::Db(e) => RegisterUserError::Internal(e.into()),
-        })?;
-
-    // Non-atomic: if this fails the user row exists without membership.
-    // Acceptable for this seed — the user can be manually added to an org via seed-admin.
-    state
-        .organisations
-        .add_member(user.id, input.target_org_id, &input.role_code)
-        .await
-        .map_err(|e| match e {
-            OrgRepoError::NotFound => RegisterUserError::OrgNotFound,
-            OrgRepoError::UnknownRoleCode(_) => RegisterUserError::UnknownRoleCode,
-            e => RegisterUserError::Internal(anyhow::anyhow!(e)),
+            CreateAndAddError::DuplicateUsername(_) => RegisterUserError::DuplicateUsername,
+            CreateAndAddError::DuplicateEmail(_) => RegisterUserError::DuplicateEmail,
+            CreateAndAddError::OrgNotFound => RegisterUserError::OrgNotFound,
+            CreateAndAddError::UnknownRoleCode(_) => RegisterUserError::UnknownRoleCode,
+            CreateAndAddError::Db(e) => RegisterUserError::Internal(e.into()),
         })?;
 
     let event = AuditEvent::user_registered_success(

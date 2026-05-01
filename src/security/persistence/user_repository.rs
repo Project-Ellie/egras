@@ -4,6 +4,20 @@ use uuid::Uuid;
 use crate::security::model::{User, UserCursor, UserMembership};
 
 #[derive(Debug, thiserror::Error)]
+pub enum CreateAndAddError {
+    #[error("duplicate username: {0}")]
+    DuplicateUsername(String),
+    #[error("duplicate email: {0}")]
+    DuplicateEmail(String),
+    #[error("organisation not found")]
+    OrgNotFound,
+    #[error("unknown role code: {0}")]
+    UnknownRoleCode(String),
+    #[error(transparent)]
+    Db(#[from] sqlx::Error),
+}
+
+#[derive(Debug, thiserror::Error)]
 pub enum UserRepoError {
     #[error("duplicate username: {0}")]
     DuplicateUsername(String),
@@ -49,4 +63,15 @@ pub trait UserRepository: Send + Sync + 'static {
         &self,
         user_ids: &[Uuid],
     ) -> Result<Vec<(Uuid, UserMembership)>, UserRepoError>;
+
+    /// Create a user and add them to `org_id` with `role_code` atomically.
+    /// On failure no partial state is left in the database.
+    async fn create_and_add_to_org(
+        &self,
+        username: &str,
+        email: &str,
+        password_hash: &str,
+        org_id: Uuid,
+        role_code: &str,
+    ) -> Result<User, CreateAndAddError>;
 }

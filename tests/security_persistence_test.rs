@@ -299,3 +299,38 @@ async fn list_memberships_for_users_batch() {
     assert_eq!(bob_m.len(), 1);
     assert_eq!(bob_m[0].1.org_id, org2);
 }
+
+#[tokio::test]
+async fn create_and_add_to_org_is_atomic_on_bad_org() {
+    let pool = TestPool::fresh().await.pool;
+    let state = MockAppStateBuilder::new(pool.clone())
+        .with_blocking_audit()
+        .with_pg_tenants_repos()
+        .with_pg_security_repos()
+        .build();
+
+    let bad_org = uuid::Uuid::now_v7();
+    let result = state
+        .users
+        .create_and_add_to_org("alice", "alice@test", "hash", bad_org, "org_member")
+        .await;
+
+    assert!(
+        matches!(
+            result,
+            Err(egras::security::persistence::CreateAndAddError::OrgNotFound)
+        ),
+        "expected OrgNotFound, got {result:?}"
+    );
+
+    // No zombie user row should remain.
+    let found = state
+        .users
+        .find_by_username_or_email("alice")
+        .await
+        .expect("query ok");
+    assert!(
+        found.is_none(),
+        "zombie user row found after failed create_and_add_to_org"
+    );
+}
