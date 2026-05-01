@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'jq -r \".tool_input.file_path // empty\" | grep -qE \"/(src|migrations)/|/Cargo\\.toml$\" && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"REMINDER: You just edited code/migrations. Before ending the turn, update the relevant note(s) in knowledge/wiki/ to reflect this change. See CLAUDE.md > Wiki sync.\\\"}}\" || true'"
+            "command": "bash -c 'p=$(jq -r \".tool_input.file_path // empty\"); echo \"$p\" | grep -qE \"/egras/(src|migrations)/|/egras/Cargo\\.toml$\" && echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PostToolUse\\\",\\\"additionalContext\\\":\\\"REMINDER: You just edited backend code/migrations. Before ending the turn, update the relevant note(s) in knowledge/wiki/. See CLAUDE.md > Wiki sync.\\\"}}\" || true'"
           }
         ]
       }

@@ -43,6 +43,7 @@ aliases:
 | [[Testing-Strategy]] | Three test layers, `TestPool`, `TestApp`, fixtures, patterns |
 | [[Developer-Guide]] | Step-by-step: add a use case, add a permission, run locally |
 | [[CI-and-Deployment]] | GitHub Actions workflow, Docker Compose, OpenAPI drift check |
+| [[Web-Frontend]] | React SPA in `web/`, consumes the OpenAPI spec for typed API access |
 | [[Design-Decisions]] | Why we chose this approach — trade-offs and alternatives considered |
 
 ## Quick orientation
