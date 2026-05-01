@@ -182,6 +182,7 @@ pub async fn post_register(
         RegisterUserError::InvalidUsername => field_error("username", "invalid"),
         RegisterUserError::InvalidEmail => field_error("email", "invalid"),
         RegisterUserError::PasswordTooShort => field_error("password", "too_short"),
+        RegisterUserError::PasswordTooLong => field_error("password", "too_long"),
         RegisterUserError::OrgNotFound => AppError::NotFound {
             resource: "organisation".into(),
         },

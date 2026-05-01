@@ -31,6 +31,8 @@ pub enum RegisterUserError {
     InvalidEmail,
     #[error("password too short (min 8 chars)")]
     PasswordTooShort,
+    #[error("password too long (max 128 chars)")]
+    PasswordTooLong,
     #[error("organisation not found")]
     OrgNotFound,
     #[error("unknown role code")]
@@ -55,6 +57,9 @@ pub async fn register_user(
     }
     if input.password.len() < 8 {
         return Err(RegisterUserError::PasswordTooShort);
+    }
+    if input.password.len() > 128 {
+        return Err(RegisterUserError::PasswordTooLong);
     }
 
     let hash = super::password_hash::hash_password(&input.password)
