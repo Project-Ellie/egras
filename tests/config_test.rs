@@ -4,6 +4,7 @@ use serial_test::serial;
 fn set_required_env() {
     std::env::set_var("EGRAS_DATABASE_URL", "postgres://e:e@localhost/e");
     std::env::set_var("EGRAS_JWT_SECRET", "a".repeat(64));
+    std::env::set_var("EGRAS_CORS_ALLOWED_ORIGINS", "http://localhost:3000");
 }
 
 #[test]

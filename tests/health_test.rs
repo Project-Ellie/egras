@@ -14,7 +14,7 @@ fn test_config() -> AppConfig {
         jwt_issuer: "egras".into(),
         log_level: "info".into(),
         log_format: "json".into(),
-        cors_allowed_origins: String::new(),
+        cors_allowed_origins: "http://localhost:3000".into(),
         password_reset_ttl_secs: 3600,
         operator_org_name: "operator".into(),
         audit_channel_capacity: 32,
