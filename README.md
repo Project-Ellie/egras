@@ -34,6 +34,20 @@ Browse the full API at **http://localhost:8080/swagger-ui**.
 
 ---
 
+## Web frontend
+
+A React SPA that exercises the full API lives in [`web/`](web/). It generates its API client from `docs/openapi.json` so types stay in lock-step with the backend.
+
+```bash
+cd web
+npm install
+npm run dev   # http://localhost:3000
+```
+
+The Vite dev server proxies `/api/*` to the backend on `:8080`. Make sure the backend is running with `EGRAS_CORS_ALLOWED_ORIGINS=http://localhost:3000`. See [knowledge/wiki/Web-Frontend.md](knowledge/wiki/Web-Frontend.md) for details.
+
+---
+
 ## Local development (without Docker)
 
 **Prerequisites:** Rust stable, PostgreSQL 16.
@@ -119,6 +133,10 @@ migrations/     # SQLx migrations (run automatically on startup)
 tests/          # Integration and E2E tests
 docs/
   openapi.json  # Committed OpenAPI spec (CI checks for drift)
+web/            # React + Vite SPA, types generated from docs/openapi.json
+knowledge/
+  wiki/         # Architecture & domain notes
+  specs/        # Design specs
 ```
 
 ---
