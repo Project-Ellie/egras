@@ -191,7 +191,6 @@ impl MockAppStateBuilder {
 
     pub fn build(self) -> AppState {
         AppState {
-            pool: self.pool,
             audit_recorder: self.audit_recorder.expect("audit_recorder not set"),
             list_audit_events: self.list_audit_events.expect("list_audit_events not set"),
             organisations: self.organisations.expect("organisations not set"),

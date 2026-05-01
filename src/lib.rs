@@ -64,7 +64,6 @@ pub async fn build_app(
     );
 
     let state = AppState {
-        pool: pool.clone(),
         audit_recorder,
         list_audit_events,
         organisations,
