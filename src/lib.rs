@@ -5,6 +5,7 @@ pub mod config;
 pub mod db;
 pub mod errors;
 pub mod openapi;
+pub mod pagination;
 pub mod security;
 pub mod tenants;
 

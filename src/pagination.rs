@@ -1,4 +1,4 @@
-//! Opaque base64url-JSON cursor codec shared by tenants list endpoints.
+//! Opaque base64url-JSON cursor codec shared across domains.
 //!
 //! Cursors are encoded as `base64url(json(T))` — opaque to the caller.
 //! The encoding is NOT stable across versions; clients must treat the

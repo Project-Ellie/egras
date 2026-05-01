@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::tenants::model::MembershipCursor;
 use crate::tenants::persistence::RepoError;
-use crate::tenants::service::cursor_codec;
+use crate::pagination as cursor_codec;
 
 #[derive(Debug, Clone)]
 pub struct ListMembersInput {

@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::security::model::{UserCursor, UserMembership};
 use crate::security::persistence::user_repository::UserRepoError;
-use crate::tenants::service::cursor_codec;
+use crate::pagination as cursor_codec;
 
 #[derive(Debug, Clone)]
 pub struct ListUsersInput {
