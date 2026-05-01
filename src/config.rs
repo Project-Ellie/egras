@@ -78,7 +78,7 @@ impl AppConfig {
             jwt_issuer: "egras-test".into(),
             log_level: "info".into(),
             log_format: "json".into(),
-            cors_allowed_origins: String::new(),
+            cors_allowed_origins: "http://localhost:3000".into(),
             password_reset_ttl_secs: 3600,
             operator_org_name: "operator".into(),
             audit_channel_capacity: 128,
@@ -109,6 +109,11 @@ impl AppConfig {
             anyhow::bail!(
                 "EGRAS_LOG_FORMAT must be 'json' or 'pretty' (got {})",
                 self.log_format
+            );
+        }
+        if self.cors_allowed_origins.trim().is_empty() {
+            anyhow::bail!(
+                "EGRAS_CORS_ALLOWED_ORIGINS must be set (comma-separated origins or \"*\")"
             );
         }
         Ok(())

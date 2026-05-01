@@ -24,8 +24,6 @@ pub enum ErrorSlug {
     ResourceConflict,
     #[serde(rename = "user.no_organisation")]
     UserNoOrganisation,
-    #[serde(rename = "rate_limited")]
-    RateLimited,
     #[serde(rename = "internal.error")]
     InternalError,
 }
@@ -40,7 +38,6 @@ impl ErrorSlug {
             Self::ResourceNotFound => "resource.not_found",
             Self::ResourceConflict => "resource.conflict",
             Self::UserNoOrganisation => "user.no_organisation",
-            Self::RateLimited => "rate_limited",
             Self::InternalError => "internal.error",
         }
     }
@@ -71,9 +68,6 @@ pub enum AppError {
     #[error("user has no organisation")]
     UserNoOrganisation,
 
-    #[error("rate limited")]
-    RateLimited,
-
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
 }
@@ -88,7 +82,6 @@ impl AppError {
             Self::NotFound { .. } => ErrorSlug::ResourceNotFound,
             Self::Conflict { .. } => ErrorSlug::ResourceConflict,
             Self::UserNoOrganisation => ErrorSlug::UserNoOrganisation,
-            Self::RateLimited => ErrorSlug::RateLimited,
             Self::Internal(_) => ErrorSlug::InternalError,
         }
     }
@@ -102,7 +95,6 @@ impl AppError {
             Self::NotFound { .. } => StatusCode::NOT_FOUND,
             Self::Conflict { .. } => StatusCode::CONFLICT,
             Self::UserNoOrganisation => StatusCode::FORBIDDEN,
-            Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -116,7 +108,6 @@ impl AppError {
             ErrorSlug::ResourceNotFound => "Not found",
             ErrorSlug::ResourceConflict => "Conflict",
             ErrorSlug::UserNoOrganisation => "User has no organisation",
-            ErrorSlug::RateLimited => "Rate limited",
             ErrorSlug::InternalError => "Internal error",
         }
     }
@@ -130,7 +121,6 @@ impl AppError {
             Self::NotFound { resource } => format!("{resource} was not found."),
             Self::Conflict { reason } => reason.clone(),
             Self::UserNoOrganisation => "The user does not belong to any organisation.".to_string(),
-            Self::RateLimited => "Too many requests; retry later.".to_string(),
             Self::Internal(_) => "An internal error occurred.".to_string(),
         }
     }

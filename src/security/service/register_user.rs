@@ -3,8 +3,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::audit::model::AuditEvent;
-use crate::security::persistence::UserRepoError;
-use crate::tenants::persistence::RepoError as OrgRepoError;
+use crate::security::persistence::user_repository::CreateAndAddError;
 
 #[derive(Debug, Clone)]
 pub struct RegisterUserInput {
@@ -32,6 +31,8 @@ pub enum RegisterUserError {
     InvalidEmail,
     #[error("password too short (min 8 chars)")]
     PasswordTooShort,
+    #[error("password too long (max 128 chars)")]
+    PasswordTooLong,
     #[error("organisation not found")]
     OrgNotFound,
     #[error("unknown role code")]
@@ -51,11 +52,14 @@ pub async fn register_user(
     if username.is_empty() || username.len() > 64 {
         return Err(RegisterUserError::InvalidUsername);
     }
-    if !email.contains('@') || email.len() > 254 {
+    if !is_valid_email(&email) {
         return Err(RegisterUserError::InvalidEmail);
     }
     if input.password.len() < 8 {
         return Err(RegisterUserError::PasswordTooShort);
+    }
+    if input.password.len() > 128 {
+        return Err(RegisterUserError::PasswordTooLong);
     }
 
     let hash = super::password_hash::hash_password(&input.password)
@@ -63,24 +67,20 @@ pub async fn register_user(
 
     let user = state
         .users
-        .create(&username, &email, &hash)
+        .create_and_add_to_org(
+            &username,
+            &email,
+            &hash,
+            input.target_org_id,
+            &input.role_code,
+        )
         .await
         .map_err(|e| match e {
-            UserRepoError::DuplicateUsername(_) => RegisterUserError::DuplicateUsername,
-            UserRepoError::DuplicateEmail(_) => RegisterUserError::DuplicateEmail,
-            UserRepoError::Db(e) => RegisterUserError::Internal(e.into()),
-        })?;
-
-    // Non-atomic: if this fails the user row exists without membership.
-    // Acceptable for this seed — the user can be manually added to an org via seed-admin.
-    state
-        .organisations
-        .add_member(user.id, input.target_org_id, &input.role_code)
-        .await
-        .map_err(|e| match e {
-            OrgRepoError::NotFound => RegisterUserError::OrgNotFound,
-            OrgRepoError::UnknownRoleCode(_) => RegisterUserError::UnknownRoleCode,
-            e => RegisterUserError::Internal(anyhow::anyhow!(e)),
+            CreateAndAddError::DuplicateUsername(_) => RegisterUserError::DuplicateUsername,
+            CreateAndAddError::DuplicateEmail(_) => RegisterUserError::DuplicateEmail,
+            CreateAndAddError::OrgNotFound => RegisterUserError::OrgNotFound,
+            CreateAndAddError::UnknownRoleCode(_) => RegisterUserError::UnknownRoleCode,
+            CreateAndAddError::Db(e) => RegisterUserError::Internal(e.into()),
         })?;
 
     let event = AuditEvent::user_registered_success(
@@ -95,4 +95,45 @@ pub async fn register_user(
     }
 
     Ok(RegisterUserOutput { user_id: user.id })
+}
+
+fn is_valid_email(email: &str) -> bool {
+    if email.len() > 254 {
+        return false;
+    }
+    match email.splitn(2, '@').collect::<Vec<_>>().as_slice() {
+        [local, domain] => {
+            !local.is_empty()
+                && !domain.is_empty()
+                && domain.contains('.')
+                && !domain.ends_with('.')
+                && !domain.starts_with('.')
+        }
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_valid_email;
+
+    #[test]
+    fn valid_emails_pass() {
+        assert!(is_valid_email("user@example.com"));
+        assert!(is_valid_email("a@b.io"));
+        assert!(is_valid_email("foo.bar+baz@sub.domain.org"));
+    }
+
+    #[test]
+    fn invalid_emails_fail() {
+        assert!(!is_valid_email(""));
+        assert!(!is_valid_email("@"));
+        assert!(!is_valid_email("a@"));
+        assert!(!is_valid_email("@b"));
+        assert!(!is_valid_email("nodomain"));
+        assert!(!is_valid_email("user@.com"));
+        assert!(!is_valid_email("user@com."));
+        assert!(!is_valid_email("user@nodot"));
+        assert!(!is_valid_email(&"a".repeat(255)));
+    }
 }

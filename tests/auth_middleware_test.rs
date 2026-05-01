@@ -28,7 +28,12 @@ fn router_with_static_permissions() -> Router {
     ]);
     Router::new()
         .route("/echo", get(echo_handler))
-        .layer(AuthLayer::new(secret.clone(), "egras".into(), loader))
+        .layer(AuthLayer::new(
+            secret.clone(),
+            "egras".into(),
+            loader,
+            egras::auth::middleware::RevocationChecker::none(),
+        ))
 }
 
 #[tokio::test]

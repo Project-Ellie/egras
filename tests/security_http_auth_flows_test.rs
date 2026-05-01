@@ -152,3 +152,36 @@ async fn switch_org_not_member_returns_403() {
     assert_eq!(resp.status(), StatusCode::FORBIDDEN);
     app.stop().await;
 }
+
+#[tokio::test]
+async fn logout_revokes_token_subsequent_request_returns_401() {
+    let pool = TestPool::fresh().await.pool;
+    let user = seed_user_with_password(&pool, "revoke_http_user", "pass1234").await;
+    let org = seed_org(&pool, "revoke-http-org", "retail").await;
+    grant_role(&pool, user, org, "org_member").await;
+
+    let cfg = test_config();
+    let token = bearer(&cfg.jwt_secret, &cfg.jwt_issuer, user, org);
+    let app = TestApp::spawn(pool, cfg).await;
+    let client = reqwest::Client::new();
+
+    // Logout succeeds.
+    let resp = client
+        .post(format!("{}/api/v1/security/logout", app.base_url))
+        .header("authorization", &token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+    // Same token is now rejected.
+    let resp = client
+        .post(format!("{}/api/v1/security/logout", app.base_url))
+        .header("authorization", &token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+
+    app.stop().await;
+}

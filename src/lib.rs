@@ -5,6 +5,7 @@ pub mod config;
 pub mod db;
 pub mod errors;
 pub mod openapi;
+pub mod pagination;
 pub mod security;
 pub mod tenants;
 
@@ -25,7 +26,7 @@ use crate::app_state::AppState;
 use crate::audit::persistence::AuditRepositoryPg;
 use crate::audit::service::{ChannelAuditRecorder, ListAuditEventsImpl};
 use crate::audit::worker::{AuditWorker, AuditWorkerHandle};
-use crate::auth::middleware::{AuthLayer, PermissionLoader};
+use crate::auth::middleware::{AuthLayer, PermissionLoader, RevocationChecker};
 use crate::config::AppConfig;
 
 pub async fn build_app(
@@ -63,7 +64,6 @@ pub async fn build_app(
     );
 
     let state = AppState {
-        pool: pool.clone(),
         audit_recorder,
         list_audit_events,
         organisations,
@@ -102,6 +102,7 @@ pub async fn build_app(
         cfg.jwt_secret.clone(),
         cfg.jwt_issuer.clone(),
         PermissionLoader::pg(pool.clone()),
+        RevocationChecker::pg(pool.clone()),
     );
     let protected: Router<AppState> = Router::new()
         .nest("/api/v1/tenants", crate::tenants::interface::router())
@@ -116,7 +117,7 @@ pub async fn build_app(
         .layer(auth_layer);
 
     // 4. Compose
-    let cors = build_cors(&cfg);
+    let cors = build_cors(&cfg)?;
     let router = public
         .merge(protected)
         .with_state(state)
@@ -148,21 +149,29 @@ async fn ready(
     }
 }
 
-fn build_cors(cfg: &AppConfig) -> CorsLayer {
+fn build_cors(cfg: &AppConfig) -> anyhow::Result<CorsLayer> {
     if cfg.cors_allowed_origins.trim().is_empty() {
-        CorsLayer::new()
-    } else {
-        let origins: Vec<axum::http::HeaderValue> = cfg
-            .cors_allowed_origins
-            .split(',')
-            .filter_map(|s| s.trim().parse().ok())
-            .collect();
-        CorsLayer::new()
-            .allow_origin(origins)
-            .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
-            .allow_headers([
-                axum::http::header::CONTENT_TYPE,
-                axum::http::header::AUTHORIZATION,
-            ])
+        anyhow::bail!("EGRAS_CORS_ALLOWED_ORIGINS must be set (comma-separated origins or \"*\")");
     }
+    let origins: Vec<axum::http::HeaderValue> = cfg
+        .cors_allowed_origins
+        .split(',')
+        .filter_map(|s| s.trim().parse().ok())
+        .collect();
+    if origins.is_empty() {
+        anyhow::bail!("EGRAS_CORS_ALLOWED_ORIGINS contains no valid origins");
+    }
+    Ok(CorsLayer::new()
+        .allow_origin(origins)
+        .allow_methods([
+            axum::http::Method::GET,
+            axum::http::Method::POST,
+            axum::http::Method::PUT,
+            axum::http::Method::PATCH,
+            axum::http::Method::DELETE,
+        ])
+        .allow_headers([
+            axum::http::header::CONTENT_TYPE,
+            axum::http::header::AUTHORIZATION,
+        ]))
 }

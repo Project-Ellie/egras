@@ -56,5 +56,6 @@ jobs:
         run: |
           EGRAS_DATABASE_URL=postgres://egras:egras@127.0.0.1:15432/postgres \
           EGRAS_JWT_SECRET=ci-only-32-bytes-placeholder-xxxxx \
+          EGRAS_CORS_ALLOWED_ORIGINS=http://localhost:3000 \
             ./target/release/egras dump-openapi > target/openapi-ci.json
           diff docs/openapi.json target/openapi-ci.json

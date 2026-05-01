@@ -84,19 +84,84 @@ impl PermissionLoaderStrategy for StaticPermissionLoader {
     }
 }
 
+/// Strategy for checking whether a JWT JTI has been revoked.
+#[async_trait]
+pub trait RevocationStrategy: Send + Sync + 'static {
+    async fn is_revoked(&self, jti: Uuid) -> anyhow::Result<bool>;
+}
+
+/// Wrapper so the layer can hold either a DB-backed or no-op implementation.
+#[derive(Clone)]
+pub struct RevocationChecker(Arc<dyn RevocationStrategy>);
+
+impl RevocationChecker {
+    pub fn new<T: RevocationStrategy>(inner: T) -> Self {
+        Self(Arc::new(inner))
+    }
+
+    pub fn pg(pool: PgPool) -> Self {
+        Self::new(PgRevocationChecker { pool })
+    }
+
+    /// Never-revoked checker for tests that don't exercise logout.
+    pub fn none() -> Self {
+        Self::new(NoRevocationChecker)
+    }
+
+    pub async fn is_revoked(&self, jti: Uuid) -> anyhow::Result<bool> {
+        self.0.is_revoked(jti).await
+    }
+}
+
+pub struct PgRevocationChecker {
+    pool: PgPool,
+}
+
+#[async_trait]
+impl RevocationStrategy for PgRevocationChecker {
+    async fn is_revoked(&self, jti: Uuid) -> anyhow::Result<bool> {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS( \
+                 SELECT 1 FROM revoked_tokens \
+                 WHERE jti = $1 AND expires_at > NOW() \
+             )",
+        )
+        .bind(jti)
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(exists)
+    }
+}
+
+pub struct NoRevocationChecker;
+
+#[async_trait]
+impl RevocationStrategy for NoRevocationChecker {
+    async fn is_revoked(&self, _jti: Uuid) -> anyhow::Result<bool> {
+        Ok(false)
+    }
+}
+
 #[derive(Clone)]
 pub struct AuthLayer {
     secret: Arc<String>,
     issuer: Arc<String>,
     loader: PermissionLoader,
+    revocation: RevocationChecker,
 }
 
 impl AuthLayer {
-    pub fn new(secret: String, issuer: String, loader: PermissionLoader) -> Self {
+    pub fn new(
+        secret: String,
+        issuer: String,
+        loader: PermissionLoader,
+        revocation: RevocationChecker,
+    ) -> Self {
         Self {
             secret: Arc::new(secret),
             issuer: Arc::new(issuer),
             loader,
+            revocation,
         }
     }
 }
@@ -109,6 +174,7 @@ impl<S> Layer<S> for AuthLayer {
             secret: self.secret.clone(),
             issuer: self.issuer.clone(),
             loader: self.loader.clone(),
+            revocation: self.revocation.clone(),
         }
     }
 }
@@ -119,6 +185,7 @@ pub struct AuthService<S> {
     secret: Arc<String>,
     issuer: Arc<String>,
     loader: PermissionLoader,
+    revocation: RevocationChecker,
 }
 
 impl<S> Service<Request<Body>> for AuthService<S>
@@ -140,6 +207,7 @@ where
         let secret = self.secret.clone();
         let issuer = self.issuer.clone();
         let loader = self.loader.clone();
+        let revocation = self.revocation.clone();
 
         Box::pin(async move {
             // Extract bearer token
@@ -167,6 +235,23 @@ where
                     .into_response());
                 }
             };
+
+            // Check revocation
+            match revocation.is_revoked(claims.jti).await {
+                Ok(true) => {
+                    return Ok(AppError::Unauthenticated {
+                        reason: "token_revoked".into(),
+                    }
+                    .into_response());
+                }
+                Ok(false) => {}
+                Err(err) => {
+                    tracing::error!(error = %err, "revocation check failed");
+                    return Ok(
+                        (StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response()
+                    );
+                }
+            }
 
             // Load permissions
             let codes = match loader.load(claims.sub, claims.org).await {

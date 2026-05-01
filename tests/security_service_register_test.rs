@@ -81,3 +81,32 @@ async fn register_duplicate_username_returns_error() {
     .unwrap_err();
     assert!(matches!(err, RegisterUserError::DuplicateUsername));
 }
+
+#[tokio::test]
+async fn register_password_too_long_returns_error() {
+    let pool = TestPool::fresh().await.pool;
+    let actor = seed_user(&pool, "admin3").await;
+    let org = seed_org(&pool, "acme3", "retail").await;
+
+    let state = MockAppStateBuilder::new(pool.clone())
+        .with_blocking_audit()
+        .with_pg_tenants_repos()
+        .with_pg_security_repos()
+        .build();
+
+    let err = register_user(
+        &state,
+        actor,
+        org,
+        RegisterUserInput {
+            username: "longpwuser".into(),
+            email: "longpw@example.com".into(),
+            password: "a".repeat(129),
+            target_org_id: org,
+            role_code: "org_member".into(),
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(err, RegisterUserError::PasswordTooLong));
+}

@@ -90,6 +90,37 @@ impl TokenRepository for TokenRepositoryPg {
         .await?;
         Ok(count)
     }
+
+    async fn revoke(
+        &self,
+        jti: Uuid,
+        user_id: Uuid,
+        expires_at: DateTime<Utc>,
+    ) -> Result<(), TokenRepoError> {
+        sqlx::query(
+            "INSERT INTO revoked_tokens (jti, user_id, expires_at) \
+             VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+        )
+        .bind(jti)
+        .bind(user_id)
+        .bind(expires_at)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn is_revoked(&self, jti: Uuid) -> Result<bool, TokenRepoError> {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS( \
+                 SELECT 1 FROM revoked_tokens \
+                 WHERE jti = $1 AND expires_at > NOW() \
+             )",
+        )
+        .bind(jti)
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(exists)
+    }
 }
 
 #[derive(sqlx::FromRow)]

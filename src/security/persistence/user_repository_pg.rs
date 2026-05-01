@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use super::user_repository::{UserRepoError, UserRepository};
+use super::user_repository::{CreateAndAddError, UserRepoError, UserRepository};
 use crate::security::model::{User, UserMembership};
 
 pub struct UserRepositoryPg {
@@ -287,6 +287,71 @@ impl UserRepository for UserRepositoryPg {
                 )
             })
             .collect())
+    }
+
+    async fn create_and_add_to_org(
+        &self,
+        username: &str,
+        email: &str,
+        password_hash: &str,
+        org_id: Uuid,
+        role_code: &str,
+    ) -> Result<User, CreateAndAddError> {
+        let mut tx = self.pool.begin().await?;
+
+        let id = Uuid::now_v7();
+        let row = sqlx::query_as::<_, UserRow>(
+            "INSERT INTO users (id, username, email, password_hash) \
+             VALUES ($1, $2, $3, $4) \
+             RETURNING id, username, email, password_hash, created_at, updated_at",
+        )
+        .bind(id)
+        .bind(username)
+        .bind(email)
+        .bind(password_hash)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| {
+            if let sqlx::Error::Database(ref dbe) = e {
+                if dbe.code().as_deref() == Some("23505") {
+                    if dbe.constraint() == Some("users_username_key") {
+                        return CreateAndAddError::DuplicateUsername(username.to_string());
+                    }
+                    if dbe.constraint() == Some("users_email_key") {
+                        return CreateAndAddError::DuplicateEmail(email.to_string());
+                    }
+                }
+            }
+            CreateAndAddError::Db(e)
+        })?;
+
+        let role_id: Option<Uuid> = sqlx::query_scalar("SELECT id FROM roles WHERE code = $1")
+            .bind(role_code)
+            .fetch_optional(&mut *tx)
+            .await?;
+        let role_id =
+            role_id.ok_or_else(|| CreateAndAddError::UnknownRoleCode(role_code.to_string()))?;
+
+        sqlx::query(
+            "INSERT INTO user_organisation_roles (user_id, organisation_id, role_id) \
+             VALUES ($1, $2, $3)",
+        )
+        .bind(row.id)
+        .bind(org_id)
+        .bind(role_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            if let sqlx::Error::Database(ref dbe) = e {
+                if dbe.code().as_deref() == Some("23503") {
+                    return CreateAndAddError::OrgNotFound;
+                }
+            }
+            CreateAndAddError::Db(e)
+        })?;
+
+        tx.commit().await?;
+        Ok(row.into())
     }
 }
 
