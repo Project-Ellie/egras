@@ -579,11 +579,12 @@ fn map_create_channel_error(e: CreateChannelError) -> AppError {
         CreateChannelError::DuplicateName => AppError::Conflict {
             reason: "channel name already taken in this organisation".into(),
         },
-        CreateChannelError::InvalidName | CreateChannelError::InvalidDescription => {
-            AppError::Validation {
-                errors: HashMap::from([("name".into(), vec!["invalid".into()])]),
-            }
-        }
+        CreateChannelError::InvalidName => AppError::Validation {
+            errors: HashMap::from([("name".into(), vec!["invalid".into()])]),
+        },
+        CreateChannelError::InvalidDescription => AppError::Validation {
+            errors: HashMap::from([("description".into(), vec!["invalid".into()])]),
+        },
         CreateChannelError::Repo(e) => AppError::Internal(anyhow::anyhow!(e)),
     }
 }
@@ -596,11 +597,12 @@ fn map_update_channel_error(e: UpdateChannelError) -> AppError {
         UpdateChannelError::DuplicateName => AppError::Conflict {
             reason: "channel name already taken".into(),
         },
-        UpdateChannelError::InvalidName | UpdateChannelError::InvalidDescription => {
-            AppError::Validation {
-                errors: HashMap::from([("name".into(), vec!["invalid".into()])]),
-            }
-        }
+        UpdateChannelError::InvalidName => AppError::Validation {
+            errors: HashMap::from([("name".into(), vec!["invalid".into()])]),
+        },
+        UpdateChannelError::InvalidDescription => AppError::Validation {
+            errors: HashMap::from([("description".into(), vec!["invalid".into()])]),
+        },
         UpdateChannelError::Repo(e) => AppError::Internal(anyhow::anyhow!(e)),
     }
 }
@@ -644,19 +646,15 @@ pub async fn get_list_channels(
     caller: AuthedCaller,
     _perm: Perm<ChannelsManage>,
     axum::extract::Path(org_id): axum::extract::Path<Uuid>,
-    axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
+    axum::extract::Query(q): axum::extract::Query<ListQuery>,
 ) -> Result<Json<PagedChannels>, AppError> {
     if !caller.permissions.is_operator_over_tenants() && caller.claims.org != org_id {
         return Err(AppError::NotFound {
             resource: "organisation".into(),
         });
     }
-    let after = params.get("after").cloned();
-    let limit: u32 = params
-        .get("limit")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(50)
-        .min(200);
+    let after = q.after;
+    let limit: u32 = q.limit.unwrap_or(50).min(200);
     let out = list_inbound_channels(
         &state,
         ListChannelsInput {
