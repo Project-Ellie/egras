@@ -38,7 +38,7 @@ aliases:
 | [[Error-Handling]] | `AppError` enum, RFC 7807 response format, error slugs |
 | [[Configuration]] | All `EGRAS_*` env vars, validation, startup checks |
 | [[Security-Domain]] | Users, passwords, all security use cases and their service functions |
-| [[Tenants-Domain]] | Organisations, memberships, role assignment use cases |
+| [[Tenants-Domain]] | Organisations, memberships, role assignment, inbound channels |
 | [[Pagination]] | Opaque cursor codec, how pagination works across domains |
 | [[Testing-Strategy]] | Three test layers, `TestPool`, `TestApp`, fixtures, patterns |
 | [[Developer-Guide]] | Step-by-step: add a use case, add a permission, run locally |

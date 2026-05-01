@@ -97,6 +97,7 @@ Defined in [`migrations/0004_rbac.sql`](../../migrations/0004_rbac.sql).
 | `tenants.members.remove` | Remove users from an org |
 | `tenants.members.list` | List members of an org |
 | `tenants.roles.assign` | Assign roles to org members |
+| `channels.manage` | Manage inbound channels for an organisation |
 | `audit.read_all` | Read audit events from any org |
 | `audit.read_own_org` | Read audit events of own org only |
 
@@ -117,6 +118,7 @@ Join table: `role_id` → `permission_id`. Many-to-many.
 | `tenants.members.remove` | ✓ | ✓ | ✓ | |
 | `tenants.members.list` | ✓ | ✓ | ✓ | ✓ |
 | `tenants.roles.assign` | ✓ | ✓ | ✓ | |
+| `channels.manage` | ✓ | ✓ | ✓ | |
 | `audit.read_all` | ✓ | | | |
 | `audit.read_own_org` | ✓ | ✓ | ✓ | |
 
@@ -186,6 +188,23 @@ Indexes: `occurred_at`, `target_organisation_id`, `actor_user_id`, `event_type`.
 
 For the full event model, see [[Audit-System]].
 
+## `inbound_channels`
+
+Per-organisation ingress endpoints. Defined in [`migrations/0008_inbound_channels.sql`](../../migrations/0008_inbound_channels.sql).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `uuid` PK | UUID v7 |
+| `organisation_id` | `uuid` FK | → `organisations.id` CASCADE DELETE |
+| `name` | `text` | UNIQUE per `(organisation_id, name)` |
+| `description` | `text` | nullable |
+| `channel_type` | `text` | CHECK in `('vast','sensor','websocket','rest')` |
+| `api_key` | `text` | 64-char hex; generated server-side; never reissued |
+| `is_active` | `boolean` | DEFAULT TRUE |
+| `created_at` / `updated_at` | `timestamptz` | |
+
+Index: `inbound_channels_organisation_id_name_key` (UNIQUE).
+
 ## Migrations
 
 Migrations are applied at startup via `sqlx::migrate!`. They are ordered and non-destructive:
@@ -199,6 +218,7 @@ Migrations are applied at startup via `sqlx::migrate!`. They are ordered and non
 | [`0005_seed_operator_and_rbac.sql`](../../migrations/0005_seed_operator_and_rbac.sql) | Operator org, 4 built-in roles, permissions, role-permission mappings |
 | [`0006_audit.sql`](../../migrations/0006_audit.sql) | `audit_events` + indexes |
 | [`0007_revoked_tokens.sql`](../../migrations/0007_revoked_tokens.sql) | `revoked_tokens` + `expires_at` index |
+| [`0008_inbound_channels.sql`](../../migrations/0008_inbound_channels.sql) | `inbound_channels` + `channels.manage` permission |
 
 > [!warning] Migration 0005 is idempotent
 > `INSERT ... ON CONFLICT DO NOTHING` is used throughout seed migration 0005, so re-running migrations is safe.

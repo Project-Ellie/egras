@@ -157,6 +157,7 @@ These permissions don't grant access via an explicit bypass in every handler —
 | `tenants.members.remove` | `DELETE /api/v1/tenants/organisations/{id}/members/{uid}` |
 | `tenants.members.list` | `GET /api/v1/tenants/organisations/{id}/members` |
 | `tenants.roles.assign` | `POST /api/v1/tenants/organisations/{id}/members/{uid}/roles` |
+| `channels.manage` | `POST/GET/PUT/DELETE /api/v1/tenants/organisations/{id}/channels[/{cid}]` |
 | `users.manage_all` | `POST /api/v1/security/register` (cross-tenant registration) |
 | `audit.read_all` | `GET /api/v1/audit/events` (any org) |
 | `audit.read_own_org` | `GET /api/v1/audit/events` (own org only) |

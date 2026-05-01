@@ -106,6 +106,9 @@ All events are created via named constructors on `AuditEvent` in [`src/audit/mod
 | `member_added(actor, actor_org, user_id, org_id, role)` | `TenantsStateChange` | `organisation.member_added` | `add_user_to_organisation` service |
 | `member_removed(actor, actor_org, user_id, org_id)` | `TenantsStateChange` | `organisation.member_removed` | `remove_user_from_organisation` service |
 | `role_assigned(actor, actor_org, user_id, org_id, role)` | `TenantsStateChange` | `organisation.role_assigned` | `assign_role` service |
+| `channel_created(actor, actor_org, channel_id, org_id, name)` | `TenantsStateChange` | `channel.created` | `create_inbound_channel` service |
+| `channel_updated(actor, actor_org, channel_id, org_id, name)` | `TenantsStateChange` | `channel.updated` | `update_inbound_channel` service |
+| `channel_deleted(actor, actor_org, channel_id, org_id)` | `TenantsStateChange` | `channel.deleted` | `delete_inbound_channel` service |
 | `users_list(actor, actor_org)` | `DataAccess` | `users.list` | `list_users` service |
 | `admin_seeded(user_id, org_id, role)` | `SecurityStateChange` | `user.registered` | `seed-admin` CLI |
 
