@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::pagination as cursor_codec;
 use crate::tenants::model::OrganisationCursor;
 use crate::tenants::persistence::RepoError;
-use crate::pagination as cursor_codec;
 
 #[derive(Debug, Clone)]
 pub struct ListMyOrganisationsInput {

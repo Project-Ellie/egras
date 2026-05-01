@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::pagination as cursor_codec;
 use crate::security::model::{UserCursor, UserMembership};
 use crate::security::persistence::user_repository::UserRepoError;
-use crate::pagination as cursor_codec;
 
 #[derive(Debug, Clone)]
 pub struct ListUsersInput {

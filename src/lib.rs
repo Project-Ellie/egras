@@ -151,9 +151,7 @@ async fn ready(
 
 fn build_cors(cfg: &AppConfig) -> anyhow::Result<CorsLayer> {
     if cfg.cors_allowed_origins.trim().is_empty() {
-        anyhow::bail!(
-            "EGRAS_CORS_ALLOWED_ORIGINS must be set (comma-separated origins or \"*\")"
-        );
+        anyhow::bail!("EGRAS_CORS_ALLOWED_ORIGINS must be set (comma-separated origins or \"*\")");
     }
     let origins: Vec<axum::http::HeaderValue> = cfg
         .cors_allowed_origins
