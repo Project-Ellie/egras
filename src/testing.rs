@@ -105,6 +105,7 @@ pub struct MockAppStateBuilder {
     roles: Option<Arc<dyn crate::tenants::persistence::RoleRepository>>,
     users: Option<Arc<dyn crate::security::persistence::UserRepository>>,
     tokens: Option<Arc<dyn crate::security::persistence::TokenRepository>>,
+    inbound_channels: Option<Arc<dyn crate::tenants::persistence::InboundChannelRepository>>,
     jwt_config: Option<crate::auth::jwt::JwtConfig>,
     password_reset_ttl_secs: Option<i64>,
 }
@@ -119,6 +120,7 @@ impl MockAppStateBuilder {
             roles: None,
             users: None,
             tokens: None,
+            inbound_channels: None,
             jwt_config: None,
             password_reset_ttl_secs: None,
         }
@@ -184,6 +186,21 @@ impl MockAppStateBuilder {
         self
     }
 
+    pub fn with_pg_channels_repo(mut self) -> Self {
+        self.inbound_channels = Some(Arc::new(
+            crate::tenants::persistence::InboundChannelRepositoryPg::new(self.pool.clone()),
+        ));
+        self
+    }
+
+    pub fn inbound_channels(
+        mut self,
+        r: Arc<dyn crate::tenants::persistence::InboundChannelRepository>,
+    ) -> Self {
+        self.inbound_channels = Some(r);
+        self
+    }
+
     pub fn with_jwt_config(mut self, cfg: crate::auth::jwt::JwtConfig) -> Self {
         self.jwt_config = Some(cfg);
         self
@@ -197,6 +214,7 @@ impl MockAppStateBuilder {
             roles: self.roles.expect("roles not set"),
             users: self.users.expect("users not set"),
             tokens: self.tokens.expect("tokens not set"),
+            inbound_channels: self.inbound_channels.expect("inbound_channels not set"),
             jwt_config: self
                 .jwt_config
                 .unwrap_or_else(|| crate::auth::jwt::JwtConfig {

@@ -24,6 +24,7 @@ async fn create_organisation_happy_path_returns_summary_and_emits_audit() {
         .audit_recorder(recorder.clone())
         .list_audit_events(Arc::new(ListAuditEventsImpl::new(repo)))
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -57,6 +58,7 @@ async fn create_organisation_duplicate_name_is_conflict() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
