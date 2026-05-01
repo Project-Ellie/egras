@@ -28,7 +28,7 @@ pub enum ChannelType { Vast, Sensor, Websocket, Rest }
 ```
 
 - `id` is UUIDv7 (app-generated, never DB-generated), consistent with all other entities.
-- `api_key` is server-generated at creation (random 32-byte hex or UUIDv4). The client cannot supply their own key. Key rotation is out of scope.
+- `api_key` is server-generated at creation as a random 32-byte value encoded as a 64-character lowercase hex string. The client cannot supply their own key. Key rotation is out of scope.
 - `(organisation_id, name)` has a unique constraint — two channels in the same org cannot share a name.
 - `api_key` is stored plaintext; no additional confidentiality measures are applied at this layer (additional authentication is handled elsewhere).
 

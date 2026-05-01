@@ -51,9 +51,6 @@ pub trait InboundChannelRepository: Send + Sync + 'static {
     ) -> Result<InboundChannel, ChannelRepoError>;
 
     /// Returns `NotFound` if id doesn't exist or belongs to a different org.
-    async fn delete(
-        &self,
-        organisation_id: Uuid,
-        channel_id: Uuid,
-    ) -> Result<(), ChannelRepoError>;
+    async fn delete(&self, organisation_id: Uuid, channel_id: Uuid)
+        -> Result<(), ChannelRepoError>;
 }

@@ -165,13 +165,12 @@ impl InboundChannelRepository for InboundChannelRepositoryPg {
         organisation_id: Uuid,
         channel_id: Uuid,
     ) -> Result<(), ChannelRepoError> {
-        let result = sqlx::query(
-            "DELETE FROM inbound_channels WHERE id = $1 AND organisation_id = $2",
-        )
-        .bind(channel_id)
-        .bind(organisation_id)
-        .execute(&self.pool)
-        .await?;
+        let result =
+            sqlx::query("DELETE FROM inbound_channels WHERE id = $1 AND organisation_id = $2")
+                .bind(channel_id)
+                .bind(organisation_id)
+                .execute(&self.pool)
+                .await?;
 
         if result.rows_affected() == 0 {
             return Err(ChannelRepoError::NotFound);

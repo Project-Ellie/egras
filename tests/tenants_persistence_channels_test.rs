@@ -25,7 +25,13 @@ async fn create_returns_channel_with_generated_api_key() {
     let repo = InboundChannelRepositoryPg::new(pool);
 
     let ch = repo
-        .create(org, "VAST Feed", Some("main VAST feed"), ChannelType::Vast, true)
+        .create(
+            org,
+            "VAST Feed",
+            Some("main VAST feed"),
+            ChannelType::Vast,
+            true,
+        )
         .await
         .unwrap();
 
@@ -43,8 +49,13 @@ async fn create_duplicate_name_in_same_org_returns_duplicate_name_error() {
     let org = seed_org(&pool, "acme2").await;
     let repo = InboundChannelRepositoryPg::new(pool);
 
-    repo.create(org, "feed", None, ChannelType::Rest, true).await.unwrap();
-    let err = repo.create(org, "feed", None, ChannelType::Sensor, true).await.unwrap_err();
+    repo.create(org, "feed", None, ChannelType::Rest, true)
+        .await
+        .unwrap();
+    let err = repo
+        .create(org, "feed", None, ChannelType::Sensor, true)
+        .await
+        .unwrap_err();
     assert!(matches!(err, ChannelRepoError::DuplicateName(n) if n == "feed"));
 }
 
@@ -55,8 +66,12 @@ async fn duplicate_name_in_different_org_is_allowed() {
     let org2 = seed_org(&pool, "org-b").await;
     let repo = InboundChannelRepositoryPg::new(pool);
 
-    repo.create(org1, "feed", None, ChannelType::Rest, true).await.unwrap();
-    repo.create(org2, "feed", None, ChannelType::Rest, true).await.unwrap();
+    repo.create(org1, "feed", None, ChannelType::Rest, true)
+        .await
+        .unwrap();
+    repo.create(org2, "feed", None, ChannelType::Rest, true)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -66,7 +81,10 @@ async fn get_returns_not_found_for_wrong_org() {
     let org2 = seed_org(&pool, "org-d").await;
     let repo = InboundChannelRepositoryPg::new(pool);
 
-    let ch = repo.create(org1, "feed", None, ChannelType::Rest, true).await.unwrap();
+    let ch = repo
+        .create(org1, "feed", None, ChannelType::Rest, true)
+        .await
+        .unwrap();
     let err = repo.get(org2, ch.id).await.unwrap_err();
     assert!(matches!(err, ChannelRepoError::NotFound));
 }
@@ -78,9 +96,15 @@ async fn list_returns_channels_for_org_only() {
     let org2 = seed_org(&pool, "org-f").await;
     let repo = InboundChannelRepositoryPg::new(pool);
 
-    repo.create(org1, "feed-a", None, ChannelType::Vast, true).await.unwrap();
-    repo.create(org1, "feed-b", None, ChannelType::Sensor, true).await.unwrap();
-    repo.create(org2, "feed-x", None, ChannelType::Rest, true).await.unwrap();
+    repo.create(org1, "feed-a", None, ChannelType::Vast, true)
+        .await
+        .unwrap();
+    repo.create(org1, "feed-b", None, ChannelType::Sensor, true)
+        .await
+        .unwrap();
+    repo.create(org2, "feed-x", None, ChannelType::Rest, true)
+        .await
+        .unwrap();
 
     let items = repo.list(org1, None, 50).await.unwrap();
     assert_eq!(items.len(), 2);
@@ -93,11 +117,21 @@ async fn update_changes_mutable_fields_and_preserves_api_key() {
     let org = seed_org(&pool, "org-g").await;
     let repo = InboundChannelRepositoryPg::new(pool);
 
-    let ch = repo.create(org, "old-name", None, ChannelType::Vast, true).await.unwrap();
+    let ch = repo
+        .create(org, "old-name", None, ChannelType::Vast, true)
+        .await
+        .unwrap();
     let original_key = ch.api_key.clone();
 
     let updated = repo
-        .update(org, ch.id, "new-name", Some("desc"), ChannelType::Sensor, false)
+        .update(
+            org,
+            ch.id,
+            "new-name",
+            Some("desc"),
+            ChannelType::Sensor,
+            false,
+        )
         .await
         .unwrap();
 
@@ -115,7 +149,10 @@ async fn delete_removes_channel_and_get_returns_not_found_after() {
     let org = seed_org(&pool, "org-h").await;
     let repo = InboundChannelRepositoryPg::new(pool);
 
-    let ch = repo.create(org, "feed", None, ChannelType::Rest, true).await.unwrap();
+    let ch = repo
+        .create(org, "feed", None, ChannelType::Rest, true)
+        .await
+        .unwrap();
     repo.delete(org, ch.id).await.unwrap();
     let err = repo.get(org, ch.id).await.unwrap_err();
     assert!(matches!(err, ChannelRepoError::NotFound));
@@ -128,7 +165,10 @@ async fn delete_wrong_org_returns_not_found() {
     let org2 = seed_org(&pool, "org-j").await;
     let repo = InboundChannelRepositoryPg::new(pool);
 
-    let ch = repo.create(org1, "feed", None, ChannelType::Rest, true).await.unwrap();
+    let ch = repo
+        .create(org1, "feed", None, ChannelType::Rest, true)
+        .await
+        .unwrap();
     let err = repo.delete(org2, ch.id).await.unwrap_err();
     assert!(matches!(err, ChannelRepoError::NotFound));
 }
@@ -141,9 +181,15 @@ async fn list_cursor_pagination_returns_only_remaining_items() {
     let org = seed_org(&pool, "org-k").await;
     let repo = InboundChannelRepositoryPg::new(pool);
 
-    repo.create(org, "feed-1", None, ChannelType::Vast, true).await.unwrap();
-    repo.create(org, "feed-2", None, ChannelType::Sensor, true).await.unwrap();
-    repo.create(org, "feed-3", None, ChannelType::Rest, true).await.unwrap();
+    repo.create(org, "feed-1", None, ChannelType::Vast, true)
+        .await
+        .unwrap();
+    repo.create(org, "feed-2", None, ChannelType::Sensor, true)
+        .await
+        .unwrap();
+    repo.create(org, "feed-3", None, ChannelType::Rest, true)
+        .await
+        .unwrap();
 
     // First page: limit 2 (returns newest first)
     let first_page = repo.list(org, None, 2).await.unwrap();

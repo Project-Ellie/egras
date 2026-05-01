@@ -3,7 +3,9 @@ use std::sync::Arc;
 use crate::audit::service::{AuditRecorder, ListAuditEvents};
 use crate::auth::jwt::JwtConfig;
 use crate::security::persistence::{TokenRepository, UserRepository};
-use crate::tenants::persistence::{InboundChannelRepository, OrganisationRepository, RoleRepository};
+use crate::tenants::persistence::{
+    InboundChannelRepository, OrganisationRepository, RoleRepository,
+};
 
 #[derive(Clone)]
 pub struct AppState {

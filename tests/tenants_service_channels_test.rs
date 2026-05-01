@@ -87,8 +87,12 @@ async fn create_duplicate_name_returns_duplicate_name_error() {
         channel_type: ChannelType::Rest,
         is_active: true,
     };
-    create_inbound_channel(&state, actor, org, input.clone()).await.unwrap();
-    let err = create_inbound_channel(&state, actor, org, input).await.unwrap_err();
+    create_inbound_channel(&state, actor, org, input.clone())
+        .await
+        .unwrap();
+    let err = create_inbound_channel(&state, actor, org, input)
+        .await
+        .unwrap_err();
     assert!(matches!(err, CreateChannelError::DuplicateName));
 }
 
@@ -280,7 +284,9 @@ async fn delete_emits_audit_and_get_returns_not_found_after() {
 
     recorder.captured.lock().await.clear();
 
-    delete_inbound_channel(&state, actor, org, org, ch.id).await.unwrap();
+    delete_inbound_channel(&state, actor, org, org, ch.id)
+        .await
+        .unwrap();
 
     let err = get_inbound_channel(&state, org, ch.id).await.unwrap_err();
     assert!(matches!(err, GetChannelError::NotFound));

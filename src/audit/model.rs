@@ -390,12 +390,7 @@ impl AuditEvent {
         e
     }
 
-    pub fn channel_deleted(
-        actor: Uuid,
-        actor_org: Uuid,
-        channel_id: Uuid,
-        org_id: Uuid,
-    ) -> Self {
+    pub fn channel_deleted(actor: Uuid, actor_org: Uuid, channel_id: Uuid, org_id: Uuid) -> Self {
         let mut e = Self::base(
             AuditCategory::TenantsStateChange,
             "channel.deleted",

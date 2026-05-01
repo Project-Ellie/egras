@@ -64,7 +64,13 @@ pub async fn update_inbound_channel(
         Err(e) => return Err(UpdateChannelError::Repo(e)),
     };
 
-    let event = AuditEvent::channel_updated(actor_user_id, actor_org, ch.id, ch.organisation_id, &ch.name);
+    let event = AuditEvent::channel_updated(
+        actor_user_id,
+        actor_org,
+        ch.id,
+        ch.organisation_id,
+        &ch.name,
+    );
     if let Err(e) = state.audit_recorder.record(event).await {
         warn!(error = %e, channel_id = %ch.id, "audit record failed for channel.updated");
     }

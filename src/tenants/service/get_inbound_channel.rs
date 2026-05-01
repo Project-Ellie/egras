@@ -17,7 +17,11 @@ pub async fn get_inbound_channel(
     organisation_id: Uuid,
     channel_id: Uuid,
 ) -> Result<InboundChannel, GetChannelError> {
-    match state.inbound_channels.get(organisation_id, channel_id).await {
+    match state
+        .inbound_channels
+        .get(organisation_id, channel_id)
+        .await
+    {
         Ok(ch) => Ok(ch),
         Err(ChannelRepoError::NotFound) => Err(GetChannelError::NotFound),
         Err(e) => Err(GetChannelError::Repo(e)),
