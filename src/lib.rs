@@ -25,7 +25,7 @@ use crate::app_state::AppState;
 use crate::audit::persistence::AuditRepositoryPg;
 use crate::audit::service::{ChannelAuditRecorder, ListAuditEventsImpl};
 use crate::audit::worker::{AuditWorker, AuditWorkerHandle};
-use crate::auth::middleware::{AuthLayer, PermissionLoader};
+use crate::auth::middleware::{AuthLayer, PermissionLoader, RevocationChecker};
 use crate::config::AppConfig;
 
 pub async fn build_app(
@@ -102,6 +102,7 @@ pub async fn build_app(
         cfg.jwt_secret.clone(),
         cfg.jwt_issuer.clone(),
         PermissionLoader::pg(pool.clone()),
+        RevocationChecker::pg(pool.clone()),
     );
     let protected: Router<AppState> = Router::new()
         .nest("/api/v1/tenants", crate::tenants::interface::router())

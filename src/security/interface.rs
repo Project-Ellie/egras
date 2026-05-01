@@ -256,11 +256,14 @@ pub async fn post_logout(
     State(state): State<AppState>,
     caller: AuthedCaller,
 ) -> Result<StatusCode, AppError> {
+    let token_expires_at =
+        chrono::DateTime::from_timestamp(caller.claims.exp, 0).unwrap_or_else(chrono::Utc::now);
     logout(
         &state,
         caller.claims.sub,
         caller.claims.org,
         caller.claims.jti,
+        token_expires_at,
     )
     .await
     .map_err(|LogoutError::Internal(e)| AppError::Internal(e))?;
