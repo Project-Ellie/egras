@@ -106,6 +106,7 @@ async fn update_changes_mutable_fields_and_preserves_api_key() {
     assert_eq!(updated.channel_type, ChannelType::Sensor);
     assert!(!updated.is_active);
     assert_eq!(updated.api_key, original_key);
+    assert!(updated.updated_at >= ch.updated_at);
 }
 
 #[tokio::test]
@@ -130,4 +131,35 @@ async fn delete_wrong_org_returns_not_found() {
     let ch = repo.create(org1, "feed", None, ChannelType::Rest, true).await.unwrap();
     let err = repo.delete(org2, ch.id).await.unwrap_err();
     assert!(matches!(err, ChannelRepoError::NotFound));
+}
+
+#[tokio::test]
+async fn list_cursor_pagination_returns_only_remaining_items() {
+    use egras::tenants::model::ChannelCursor;
+
+    let pool = TestPool::fresh().await.pool;
+    let org = seed_org(&pool, "org-k").await;
+    let repo = InboundChannelRepositoryPg::new(pool);
+
+    repo.create(org, "feed-1", None, ChannelType::Vast, true).await.unwrap();
+    repo.create(org, "feed-2", None, ChannelType::Sensor, true).await.unwrap();
+    repo.create(org, "feed-3", None, ChannelType::Rest, true).await.unwrap();
+
+    // First page: limit 2 (returns newest first)
+    let first_page = repo.list(org, None, 2).await.unwrap();
+    assert_eq!(first_page.len(), 2);
+
+    // Build cursor from last item of first page
+    let cursor = ChannelCursor {
+        created_at: first_page[1].created_at,
+        id: first_page[1].id,
+    };
+
+    // Second page: should return the one remaining item
+    let second_page = repo.list(org, Some(cursor), 10).await.unwrap();
+    assert_eq!(second_page.len(), 1);
+
+    // Items from both pages must be distinct
+    assert!(second_page[0].id != first_page[0].id);
+    assert!(second_page[0].id != first_page[1].id);
 }
