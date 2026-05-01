@@ -8,6 +8,7 @@ pub enum AuditCategory {
     SecurityStateChange,
     SecurityAuth,
     SecurityPermissionDenial,
+    DataAccess,
     TenantsStateChange,
 }
 
@@ -17,6 +18,7 @@ impl AuditCategory {
             Self::SecurityStateChange => "security.state_change",
             Self::SecurityAuth => "security.auth",
             Self::SecurityPermissionDenial => "security.permission_denial",
+            Self::DataAccess => "data.access",
             Self::TenantsStateChange => "tenants.state_change",
         }
     }
@@ -26,6 +28,7 @@ impl AuditCategory {
             "security.state_change" => Self::SecurityStateChange,
             "security.auth" => Self::SecurityAuth,
             "security.permission_denial" => Self::SecurityPermissionDenial,
+            "data.access" => Self::DataAccess,
             "tenants.state_change" => Self::TenantsStateChange,
             _ => return None,
         })
@@ -323,9 +326,8 @@ impl AuditEvent {
         e
     }
 
-    // TODO: replace SecurityAuth with a DataAccess/SecurityRead category once one exists.
     pub fn users_list(actor_user_id: Uuid, actor_org_id: Uuid) -> Self {
-        let mut e = Self::base(AuditCategory::SecurityAuth, "users.list", Outcome::Success);
+        let mut e = Self::base(AuditCategory::DataAccess, "users.list", Outcome::Success);
         e.actor_user_id = Some(actor_user_id);
         e.actor_organisation_id = Some(actor_org_id);
         e.target_type = Some("user".into());
