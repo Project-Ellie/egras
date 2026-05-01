@@ -609,6 +609,22 @@ fn map_update_channel_error(e: UpdateChannelError) -> AppError {
 
 // ── Channel handlers ──────────────────────────────────────────────────────────
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/tenants/organisations/{org_id}/channels",
+    tag = "tenants",
+    request_body = CreateChannelRequest,
+    security(("bearer" = [])),
+    params(("org_id" = Uuid, Path, description = "Organisation ID")),
+    responses(
+        (status = 201, description = "Channel created", body = ChannelBody),
+        (status = 400, description = "Validation error", body = ErrorBody),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+        (status = 404, description = "Organisation not found", body = ErrorBody),
+        (status = 409, description = "Duplicate channel name", body = ErrorBody),
+    ),
+)]
 pub async fn post_create_channel(
     State(state): State<AppState>,
     caller: AuthedCaller,
@@ -641,6 +657,23 @@ pub async fn post_create_channel(
     Ok((StatusCode::CREATED, Json(ChannelBody::from(ch))))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/tenants/organisations/{org_id}/channels",
+    tag = "tenants",
+    security(("bearer" = [])),
+    params(
+        ("org_id" = Uuid, Path, description = "Organisation ID"),
+        ("after" = Option<String>, Query, description = "Pagination cursor"),
+        ("limit" = Option<u32>, Query, description = "Page size (default 50, max 200)"),
+    ),
+    responses(
+        (status = 200, description = "Paged channel list", body = PagedChannels),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+        (status = 404, description = "Organisation not found", body = ErrorBody),
+    ),
+)]
 pub async fn get_list_channels(
     State(state): State<AppState>,
     caller: AuthedCaller,
@@ -676,6 +709,22 @@ pub async fn get_list_channels(
     }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/tenants/organisations/{org_id}/channels/{channel_id}",
+    tag = "tenants",
+    security(("bearer" = [])),
+    params(
+        ("org_id" = Uuid, Path, description = "Organisation ID"),
+        ("channel_id" = Uuid, Path, description = "Channel ID"),
+    ),
+    responses(
+        (status = 200, description = "Channel", body = ChannelBody),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+        (status = 404, description = "Not found", body = ErrorBody),
+    ),
+)]
 pub async fn get_channel(
     State(state): State<AppState>,
     caller: AuthedCaller,
@@ -698,6 +747,25 @@ pub async fn get_channel(
     Ok(Json(ChannelBody::from(ch)))
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/v1/tenants/organisations/{org_id}/channels/{channel_id}",
+    tag = "tenants",
+    request_body = UpdateChannelRequest,
+    security(("bearer" = [])),
+    params(
+        ("org_id" = Uuid, Path, description = "Organisation ID"),
+        ("channel_id" = Uuid, Path, description = "Channel ID"),
+    ),
+    responses(
+        (status = 200, description = "Updated channel", body = ChannelBody),
+        (status = 400, description = "Validation error", body = ErrorBody),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+        (status = 404, description = "Not found", body = ErrorBody),
+        (status = 409, description = "Duplicate name", body = ErrorBody),
+    ),
+)]
 pub async fn put_update_channel(
     State(state): State<AppState>,
     caller: AuthedCaller,
@@ -731,6 +799,22 @@ pub async fn put_update_channel(
     Ok(Json(ChannelBody::from(ch)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/tenants/organisations/{org_id}/channels/{channel_id}",
+    tag = "tenants",
+    security(("bearer" = [])),
+    params(
+        ("org_id" = Uuid, Path, description = "Organisation ID"),
+        ("channel_id" = Uuid, Path, description = "Channel ID"),
+    ),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 401, description = "Unauthenticated", body = ErrorBody),
+        (status = 403, description = "Permission denied", body = ErrorBody),
+        (status = 404, description = "Not found", body = ErrorBody),
+    ),
+)]
 pub async fn delete_channel(
     State(state): State<AppState>,
     caller: AuthedCaller,
