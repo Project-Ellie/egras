@@ -15,6 +15,7 @@ pub enum ChannelRepoError {
 
 #[async_trait]
 pub trait InboundChannelRepository: Send + Sync + 'static {
+    /// Insert a new channel. Generates id and api_key internally.
     async fn create(
         &self,
         organisation_id: Uuid,
@@ -31,12 +32,14 @@ pub trait InboundChannelRepository: Send + Sync + 'static {
         limit: u32,
     ) -> Result<Vec<InboundChannel>, ChannelRepoError>;
 
+    /// Returns `NotFound` if id doesn't exist or belongs to a different org.
     async fn get(
         &self,
         organisation_id: Uuid,
         channel_id: Uuid,
     ) -> Result<InboundChannel, ChannelRepoError>;
 
+    /// Returns `NotFound` if id doesn't exist or belongs to a different org.
     async fn update(
         &self,
         organisation_id: Uuid,
@@ -47,6 +50,7 @@ pub trait InboundChannelRepository: Send + Sync + 'static {
         is_active: bool,
     ) -> Result<InboundChannel, ChannelRepoError>;
 
+    /// Returns `NotFound` if id doesn't exist or belongs to a different org.
     async fn delete(
         &self,
         organisation_id: Uuid,
