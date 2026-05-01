@@ -19,7 +19,7 @@ CREATE UNIQUE INDEX inbound_channels_organisation_id_name_key
 INSERT INTO permissions (id, code, description) VALUES
   ('00000000-0000-0000-0000-00000000020c', 'channels.manage',
    'Manage inbound channels for an organisation')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (code) DO NOTHING;
 
 -- operator_admin, org_owner, org_admin get channels.manage
 INSERT INTO role_permissions (role_id, permission_id)
