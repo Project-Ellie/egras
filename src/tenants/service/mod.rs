@@ -1,6 +1,11 @@
 pub mod add_user_to_organisation;
 pub mod assign_role;
+pub mod create_inbound_channel;
 pub mod create_organisation;
+pub mod delete_inbound_channel;
+pub mod get_inbound_channel;
+pub mod list_inbound_channels;
 pub mod list_my_organisations;
 pub mod list_organisation_members;
 pub mod remove_user_from_organisation;
+pub mod update_inbound_channel;
