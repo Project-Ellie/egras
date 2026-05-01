@@ -62,12 +62,15 @@ pub async fn build_app(
     let tokens: Arc<dyn crate::security::persistence::TokenRepository> = Arc::new(
         crate::security::persistence::TokenRepositoryPg::new(pool.clone()),
     );
+    let inbound_channels: Arc<dyn crate::tenants::persistence::InboundChannelRepository> =
+        Arc::new(crate::tenants::persistence::InboundChannelRepositoryPg::new(pool.clone()));
 
     let state = AppState {
         audit_recorder,
         list_audit_events,
         organisations,
         roles,
+        inbound_channels,
         users,
         tokens,
         jwt_config: crate::auth::jwt::JwtConfig {

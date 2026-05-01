@@ -15,6 +15,7 @@ async fn password_reset_unknown_email_returns_ok() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -35,6 +36,7 @@ async fn password_reset_invalid_token_returns_error() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 

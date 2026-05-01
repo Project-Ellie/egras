@@ -18,6 +18,7 @@ async fn assign_role_happy_path_was_new_true() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -64,6 +65,7 @@ async fn assign_role_idempotent_was_new_false() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -111,6 +113,7 @@ async fn assign_role_unknown_role_code_returns_error() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -146,6 +149,7 @@ async fn assign_role_non_member_actor_gets_not_found() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 

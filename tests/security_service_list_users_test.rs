@@ -18,6 +18,7 @@ async fn operator_sees_all_users_with_all_memberships() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -55,6 +56,7 @@ async fn tenant_admin_sees_only_org_users_memberships_scoped_to_org() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -92,6 +94,7 @@ async fn invalid_cursor_returns_error() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -123,6 +126,7 @@ async fn limit_clamped_to_100() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 

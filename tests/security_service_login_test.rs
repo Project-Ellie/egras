@@ -15,6 +15,7 @@ async fn login_happy_path_returns_token_and_memberships() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -44,6 +45,7 @@ async fn login_wrong_password_returns_invalid_credentials() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -65,6 +67,7 @@ async fn login_unknown_user_returns_invalid_credentials() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 

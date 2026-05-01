@@ -16,6 +16,7 @@ async fn register_happy_path_creates_user_and_audit() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -55,6 +56,7 @@ async fn register_duplicate_username_returns_error() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 
@@ -91,6 +93,7 @@ async fn register_password_too_long_returns_error() {
     let state = MockAppStateBuilder::new(pool.clone())
         .with_blocking_audit()
         .with_pg_tenants_repos()
+        .with_pg_channels_repo()
         .with_pg_security_repos()
         .build();
 

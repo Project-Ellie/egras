@@ -347,4 +347,60 @@ impl AuditEvent {
         e.payload = serde_json::json!({ "role_code": role_code, "via": "seed-admin" });
         e
     }
+
+    pub fn channel_created(
+        actor: Uuid,
+        actor_org: Uuid,
+        channel_id: Uuid,
+        org_id: Uuid,
+        name: &str,
+    ) -> Self {
+        let mut e = Self::base(
+            AuditCategory::TenantsStateChange,
+            "channel.created",
+            Outcome::Success,
+        );
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("inbound_channel".into());
+        e.target_id = Some(channel_id);
+        e.target_organisation_id = Some(org_id);
+        e.payload = json!({ "name": name });
+        e
+    }
+
+    pub fn channel_updated(
+        actor: Uuid,
+        actor_org: Uuid,
+        channel_id: Uuid,
+        org_id: Uuid,
+        name: &str,
+    ) -> Self {
+        let mut e = Self::base(
+            AuditCategory::TenantsStateChange,
+            "channel.updated",
+            Outcome::Success,
+        );
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("inbound_channel".into());
+        e.target_id = Some(channel_id);
+        e.target_organisation_id = Some(org_id);
+        e.payload = json!({ "name": name });
+        e
+    }
+
+    pub fn channel_deleted(actor: Uuid, actor_org: Uuid, channel_id: Uuid, org_id: Uuid) -> Self {
+        let mut e = Self::base(
+            AuditCategory::TenantsStateChange,
+            "channel.deleted",
+            Outcome::Success,
+        );
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("inbound_channel".into());
+        e.target_id = Some(channel_id);
+        e.target_organisation_id = Some(org_id);
+        e
+    }
 }

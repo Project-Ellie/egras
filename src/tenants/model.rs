@@ -62,3 +62,32 @@ pub struct MembershipCursor {
     pub created_at: DateTime<Utc>,
     pub user_id: Uuid,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, utoipa::ToSchema)]
+#[sqlx(type_name = "text", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum ChannelType {
+    Vast,
+    Sensor,
+    Websocket,
+    Rest,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InboundChannel {
+    pub id: Uuid,
+    pub organisation_id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub channel_type: ChannelType,
+    pub api_key: String,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChannelCursor {
+    pub created_at: DateTime<Utc>,
+    pub id: Uuid,
+}

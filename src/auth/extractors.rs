@@ -145,3 +145,13 @@ impl Permission for UsersRead {
         set.has("tenants.members.list") || set.is_operator_over_users()
     }
 }
+
+/// Permission marker: `channels.manage`.
+/// Accepts either the direct permission OR `tenants.manage_all` operator bypass.
+pub struct ChannelsManage;
+impl Permission for ChannelsManage {
+    const CODE: &'static str = "channels.manage";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has(Self::CODE) || set.is_operator_over_tenants()
+    }
+}
