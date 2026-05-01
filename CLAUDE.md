@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **egras** (Enterprise-Ready Rust Application Seed) is a production-shaped foundation for multi-tenant REST API backends: Axum + PostgreSQL + JWT, with RBAC, audit logging, and RFC 7807 error responses. Read `knowledge/specs/2026-04-18-egras-rust-seed-design.md` before any non-trivial work.
 
+## Wiki sync (mandatory)
+
+After any change under `src/`, `migrations/`, or route registration, you MUST update the relevant note(s) in `knowledge/wiki/` in the same commit/PR. Stale wiki docs are a defect. Module-to-note mapping is in `knowledge/wiki/Architecture.md`.
+
 ## Commands
 
 ```bash
