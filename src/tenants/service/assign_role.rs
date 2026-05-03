@@ -25,6 +25,8 @@ pub enum AssignRoleError {
     UnknownRoleCode,
     #[error("unknown user")]
     UnknownUser,
+    #[error("service account cannot be granted roles in foreign organisations")]
+    ServiceAccountCrossOrgForbidden,
     #[error(transparent)]
     Repo(#[from] RepoError),
     #[error(transparent)]
@@ -46,6 +48,27 @@ pub async fn assign_role(
             .await?;
         if !member {
             return Err(AssignRoleError::NotFound);
+        }
+    }
+
+    // Step 1b: Service-account guard — SAs are bound to their home org.
+    if let Some(target_user) = state
+        .users
+        .find_by_id(input.target_user_id)
+        .await
+        .map_err(|e| AssignRoleError::Internal(anyhow::anyhow!(e)))?
+    {
+        if matches!(
+            target_user.kind,
+            crate::security::model::UserKind::ServiceAccount
+        ) {
+            let sa = state
+                .service_accounts
+                .find(input.organisation_id, input.target_user_id)
+                .await?;
+            if sa.is_none() {
+                return Err(AssignRoleError::ServiceAccountCrossOrgForbidden);
+            }
         }
     }
 

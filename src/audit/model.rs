@@ -403,4 +403,109 @@ impl AuditEvent {
         e.target_organisation_id = Some(org_id);
         e
     }
+
+    pub fn service_account_created(
+        actor: Uuid,
+        actor_org: Uuid,
+        sa_user_id: Uuid,
+        org_id: Uuid,
+        name: &str,
+    ) -> Self {
+        let mut e = Self::base(
+            AuditCategory::SecurityStateChange,
+            "service_account.created",
+            Outcome::Success,
+        );
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("service_account".into());
+        e.target_id = Some(sa_user_id);
+        e.target_organisation_id = Some(org_id);
+        e.payload = json!({ "name": name });
+        e
+    }
+
+    pub fn service_account_deleted(
+        actor: Uuid,
+        actor_org: Uuid,
+        sa_user_id: Uuid,
+        org_id: Uuid,
+    ) -> Self {
+        let mut e = Self::base(
+            AuditCategory::SecurityStateChange,
+            "service_account.deleted",
+            Outcome::Success,
+        );
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("service_account".into());
+        e.target_id = Some(sa_user_id);
+        e.target_organisation_id = Some(org_id);
+        e
+    }
+
+    pub fn api_key_created(
+        actor: Uuid,
+        actor_org: Uuid,
+        sa_user_id: Uuid,
+        org_id: Uuid,
+        key_id: Uuid,
+        prefix: &str,
+    ) -> Self {
+        let mut e = Self::base(
+            AuditCategory::SecurityStateChange,
+            "api_key.created",
+            Outcome::Success,
+        );
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("api_key".into());
+        e.target_id = Some(sa_user_id);
+        e.target_organisation_id = Some(org_id);
+        e.payload = json!({ "key_id": key_id, "prefix": prefix });
+        e
+    }
+
+    pub fn api_key_revoked(
+        actor: Uuid,
+        actor_org: Uuid,
+        sa_user_id: Uuid,
+        org_id: Uuid,
+        key_id: Uuid,
+    ) -> Self {
+        let mut e = Self::base(
+            AuditCategory::SecurityStateChange,
+            "api_key.revoked",
+            Outcome::Success,
+        );
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("api_key".into());
+        e.target_id = Some(sa_user_id);
+        e.target_organisation_id = Some(org_id);
+        e.payload = json!({ "key_id": key_id });
+        e
+    }
+
+    pub fn api_key_rotated(
+        actor: Uuid,
+        actor_org: Uuid,
+        sa_user_id: Uuid,
+        org_id: Uuid,
+        old_key_id: Uuid,
+        new_key_id: Uuid,
+    ) -> Self {
+        let mut e = Self::base(
+            AuditCategory::SecurityStateChange,
+            "api_key.rotated",
+            Outcome::Success,
+        );
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("api_key".into());
+        e.target_id = Some(sa_user_id);
+        e.target_organisation_id = Some(org_id);
+        e.payload = json!({ "old_key_id": old_key_id, "new_key_id": new_key_id });
+        e
+    }
 }

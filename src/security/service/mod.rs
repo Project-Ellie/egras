@@ -1,5 +1,11 @@
+pub mod api_key_secret;
 pub mod bootstrap_seed_admin;
 pub mod change_password;
+pub mod create_api_key;
+pub mod create_service_account;
+pub mod delete_service_account;
+pub mod list_api_keys;
+pub mod list_service_accounts;
 pub mod list_users;
 pub mod login;
 pub mod logout;
@@ -7,4 +13,6 @@ pub mod password_hash;
 pub mod password_reset_confirm;
 pub mod password_reset_request;
 pub mod register_user;
+pub mod revoke_api_key;
+pub mod rotate_api_key;
 pub mod switch_org;
