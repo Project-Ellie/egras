@@ -1,7 +1,4 @@
-#[path = "common/mod.rs"]
-mod common;
-
-use common::seed::{seed_org, seed_user};
+use crate::common::seed::{seed_org, seed_user};
 use egras::security::service::register_user::{
     register_user, RegisterUserError, RegisterUserInput,
 };

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Enterprise-ready Rust application seed (egras)."
+autotests = false
 
 [lib]
 path = "src/lib.rs"
@@ -11,6 +12,10 @@ path = "src/lib.rs"
 [[bin]]
 name = "egras"
 path = "src/main.rs"
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
 
 [features]
 testing = ["dep:url"]

@@ -1,7 +1,4 @@
-#[path = "common/mod.rs"]
-mod common;
-
-use common::seed::{grant_role, seed_org, seed_user};
+use crate::common::seed::{grant_role, seed_org, seed_user};
 use egras::security::model::UserCursor;
 use egras::testing::{MockAppStateBuilder, TestPool};
 

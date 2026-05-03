@@ -1,6 +1,3 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use egras::config::AppConfig;
 use egras::testing::{TestApp, TestPool};
 

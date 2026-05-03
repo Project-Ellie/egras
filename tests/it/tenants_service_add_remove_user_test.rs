@@ -1,7 +1,4 @@
-#[path = "common/mod.rs"]
-mod common;
-
-use common::seed::{grant_role, seed_org, seed_user};
+use crate::common::seed::{grant_role, seed_org, seed_user};
 use egras::tenants::service::add_user_to_organisation::{
     add_user_to_organisation, AddUserToOrganisationInput,
 };

@@ -1,12 +1,9 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use egras::tenants::service::list_my_organisations::{
     list_my_organisations, ListMyOrganisationsInput,
 };
 use egras::testing::{MockAppStateBuilder, TestPool};
 
-use common::seed::{grant_role, seed_org, seed_user};
+use crate::common::seed::{grant_role, seed_org, seed_user};
 
 #[tokio::test]
 async fn list_my_organisations_returns_only_caller_orgs() {

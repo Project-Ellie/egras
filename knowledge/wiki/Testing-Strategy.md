@@ -10,13 +10,16 @@ tags:
 
 Tests in egras are integration-heavy by design. The layered [[Architecture]] enables testing each layer in isolation with real dependencies at the appropriate level.
 
-All test infrastructure is in [`src/testing.rs`](../../src/testing.rs) (feature-gated behind `cfg(any(test, feature = "testing"))`) and [`tests/common/`](../../tests/common/).
+All test infrastructure is in [`src/testing.rs`](../../src/testing.rs) (feature-gated behind `cfg(any(test, feature = "testing"))`) and [`tests/it/common/`](../../tests/it/common/).
+
+> [!note] Single integration-test binary
+> Every `tests/it/<name>_test.rs` is a module of one `it` binary declared in [`tests/it/main.rs`](../../tests/it/main.rs) and registered via the `[[test]]` stanza in `Cargo.toml` (with `autotests = false` so cargo doesn't auto-discover loose files). This means **42+ integration files link once, not 42+ times** — full builds drop from minutes to seconds. Keep the `_test.rs` suffix for traceability; just add the new file under `tests/it/` and register it with `mod <name>;` in `tests/it/main.rs`. From a sibling test, refer to shared helpers as `crate::common::...`.
 
 ## Three Test Layers
 
 ### Layer 1 — Persistence Tests
 
-Files: `tests/*_persistence_test.rs`
+Files: `tests/it/*_persistence_test.rs`
 
 Test the repository implementations against a real PostgreSQL database. No mocking — if a query is wrong, the test fails.
 
@@ -38,7 +41,7 @@ async fn create_user_and_find_by_email() {
 
 ### Layer 2 — Service Tests
 
-Files: `tests/*_service_test.rs`
+Files: `tests/it/*_service_*_test.rs`
 
 Test the use-case functions. These use a real DB (via `TestPool`) but through `MockAppStateBuilder`, which wires the state with either real Postgres repos or mocks depending on what the test needs.
 
@@ -69,7 +72,7 @@ async fn login_with_wrong_password_returns_error() {
 
 ### Layer 3 — HTTP / Interface Tests
 
-Files: `tests/*_http_*_test.rs`
+Files: `tests/it/*_http_*_test.rs`
 
 Full end-to-end over HTTP. A real server is bound to a random port; tests use `reqwest` to make requests against it. Assertions cover status codes, response body shapes, and headers.
 
@@ -101,7 +104,7 @@ async fn login_returns_token_and_memberships() {
 
 ### Layer 4 — End-to-End Tests
 
-Files: `tests/e2e_*_test.rs`
+Files: `tests/it/e2e_*_test.rs`
 
 Multi-step user journeys — e.g., bootstrap via CLI, then login via HTTP, then perform operations.
 
@@ -165,7 +168,7 @@ app.stop().await;
 
 ### Seed Helpers
 
-`tests/common/seed.rs` provides helpers to insert test data:
+`tests/it/common/seed.rs` provides helpers to insert test data:
 
 ```rust
 let user_id = seed_user(&pool, "alice").await;
@@ -176,7 +179,7 @@ let token   = mint_jwt_for(&pool, user_id, org_id).await;
 
 ### JWT Helpers
 
-Tests that need an authenticated request use the JWT minting helpers in `tests/common/auth.rs`:
+Tests that need an authenticated request use the JWT minting helpers in `tests/it/common/auth.rs`:
 
 ```rust
 let token = mint_jwt(user_id, org_id, &jwt_config);
@@ -189,66 +192,66 @@ let resp = app.client
 ## Running Tests
 
 ```bash
-# Full suite (requires Postgres)
+# Full suite (requires Postgres) — preferred runner
 TEST_DATABASE_URL=postgres://egras:egras@127.0.0.1:5432/postgres \
-  cargo test --all-features
+  cargo nextest run --all-features
 
-# Single test file
-TEST_DATABASE_URL=... cargo test --all-features security_service_login
+# All tests in one module (file)
+TEST_DATABASE_URL=... cargo nextest run --all-features security_service_login_test
 
 # Single test function
-TEST_DATABASE_URL=... cargo test --all-features login_with_wrong_password_returns_error
+TEST_DATABASE_URL=... cargo nextest run --all-features login_with_wrong_password_returns_error
+
+# Stock cargo equivalent (slightly less parallel, no per-test timing summary)
+TEST_DATABASE_URL=... cargo test --all-features
 
 # With output
 TEST_DATABASE_URL=... cargo test --all-features -- --nocapture
 ```
+
+`cargo nextest` is recommended — install once with `cargo install cargo-nextest --locked`. It has the same semantics as `cargo test` but parallelises better and prints a per-test timing summary; on this codebase it brings the full suite to ~8 s.
 
 > [!tip] `serial_test`
 > Some tests set environment variables (e.g., config tests). These use `#[serial_test::serial]` to prevent parallel execution from causing interference. If you add a test that modifies global state, add `#[serial]`.
 
 ## Test File Organisation
 
+All integration tests live under `tests/it/` and link into one `it` binary declared in [`tests/it/main.rs`](../../tests/it/main.rs). Cargo discovers nothing in `tests/` automatically — `autotests = false` plus the explicit `[[test]] name = "it" path = "tests/it/main.rs"` stanza in `Cargo.toml` is the source of truth.
+
 ```
 tests/
-├─ common/
-│   ├─ mod.rs           TestPool, TestApp, utilities
-│   ├─ seed.rs          Data seeding helpers
-│   └─ auth.rs          JWT minting helpers
-│
-├─ security_persistence_test.rs
-├─ security_service_login_test.rs
-├─ security_service_register_test.rs
-├─ security_service_auth_flows_test.rs
-├─ security_service_list_users_test.rs
-├─ security_service_password_reset_test.rs
-├─ security_http_login_test.rs
-├─ security_http_register_test.rs
-├─ security_http_auth_flows_test.rs
-├─ security_http_list_users_test.rs
-├─ security_http_password_reset_test.rs
-│
-├─ tenants_persistence_test.rs
-├─ tenants_service_create_organisation_test.rs
-├─ tenants_service_add_remove_user_test.rs
-├─ tenants_service_list_my_organisations_test.rs
-├─ tenants_service_list_organisation_members_test.rs
-├─ tenants_service_assign_role_test.rs
-├─ tenants_http_create_organisation_test.rs
-├─ tenants_http_add_remove_user_test.rs
-├─ tenants_http_list_my_organisations_test.rs
-├─ tenants_http_list_organisation_members_test.rs
-├─ tenants_http_assign_role_test.rs
-│
-├─ audit_persistence_test.rs
-├─ audit_list_events_test.rs
-│
-├─ auth_middleware_test.rs
-├─ bootstrap_seed_admin_test.rs
-├─ config_test.rs
-├─ errors_test.rs
-├─ health_test.rs
-└─ e2e_seed_admin_login_test.rs
+└─ it/
+    ├─ main.rs                      Lists every `mod foo_test;`
+    ├─ common/
+    │   ├─ mod.rs                   Shared helpers (re-exports the three submodules)
+    │   ├─ seed.rs                  Data seeding helpers
+    │   └─ auth.rs                  JWT minting helpers
+    │
+    ├─ security_persistence_test.rs
+    ├─ security_service_*_test.rs   (login, register, list_users, ...)
+    ├─ security_http_*_test.rs
+    │
+    ├─ tenants_persistence_test.rs
+    ├─ tenants_service_*_test.rs
+    ├─ tenants_http_*_test.rs
+    │
+    ├─ audit_*_test.rs
+    ├─ jobs_*_test.rs
+    ├─ outbox_*_test.rs
+    ├─ auth_*_test.rs
+    │
+    ├─ bootstrap_seed_admin_test.rs
+    ├─ config_test.rs
+    ├─ errors_test.rs
+    ├─ health_test.rs
+    └─ e2e_*_test.rs
 ```
+
+### Adding a new integration test
+
+1. Create `tests/it/<name>_test.rs` with `#[tokio::test]` functions.
+2. Add `mod <name>_test;` in `tests/it/main.rs` (alphabetical for tidiness).
+3. Inside the new file, refer to shared helpers as `use crate::common::seed::seed_user;` etc. — `common` is declared at the crate root in `main.rs`, so siblings reach it via `crate::`.
 
 ## Related notes
 

@@ -1,6 +1,3 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use egras::security::service::password_reset_confirm::{
     password_reset_confirm, PasswordResetConfirmError, PasswordResetConfirmInput,
 };

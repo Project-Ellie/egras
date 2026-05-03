@@ -1,0 +1,46 @@
+#![allow(dead_code)]
+
+mod common;
+
+mod audit_list_events_test;
+mod audit_model_test;
+mod audit_persistence_test;
+mod audit_recorder_test;
+mod audit_worker_test;
+mod auth_jwt_test;
+mod auth_middleware_test;
+mod auth_permissions_test;
+mod bootstrap_seed_admin_test;
+mod config_test;
+mod e2e_seed_admin_login_test;
+mod errors_test;
+mod health_test;
+mod jobs_persistence_test;
+mod jobs_runner_test;
+mod outbox_persistence_test;
+mod outbox_relayer_test;
+mod security_http_auth_flows_test;
+mod security_http_list_users_test;
+mod security_http_login_test;
+mod security_http_password_reset_test;
+mod security_http_register_test;
+mod security_persistence_test;
+mod security_service_auth_flows_test;
+mod security_service_list_users_test;
+mod security_service_login_test;
+mod security_service_password_reset_test;
+mod security_service_register_test;
+mod tenants_http_add_remove_user_test;
+mod tenants_http_assign_role_test;
+mod tenants_http_channels_test;
+mod tenants_http_create_organisation_test;
+mod tenants_http_list_my_organisations_test;
+mod tenants_http_list_organisation_members_test;
+mod tenants_persistence_channels_test;
+mod tenants_persistence_test;
+mod tenants_service_add_remove_user_test;
+mod tenants_service_assign_role_test;
+mod tenants_service_channels_test;
+mod tenants_service_create_organisation_test;
+mod tenants_service_list_my_organisations_test;
+mod tenants_service_list_organisation_members_test;
