@@ -12,4 +12,4 @@ Capture usage events (API calls, storage, message volume) for downstream billing
 
 **Scope:** Metering event emitter, aggregation worker, export to Stripe/Chargebee.
 
-**Touches:** [[Outbox-Pattern]].
+**Touches:** [[Outbox]].

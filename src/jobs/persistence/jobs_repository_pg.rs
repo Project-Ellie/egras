@@ -57,6 +57,17 @@ impl TryFrom<JobRow> for Job {
 #[async_trait]
 impl JobsRepository for JobsRepositoryPg {
     async fn enqueue(&self, req: EnqueueRequest) -> anyhow::Result<Uuid> {
+        let mut tx = self.pool.begin().await?;
+        let id = JobsRepository::enqueue_in_tx(self, &mut tx, req).await?;
+        tx.commit().await?;
+        Ok(id)
+    }
+
+    async fn enqueue_in_tx(
+        &self,
+        tx: &mut sqlx::PgConnection,
+        req: EnqueueRequest,
+    ) -> anyhow::Result<Uuid> {
         let id = Uuid::now_v7();
         sqlx::query(
             r#"
@@ -69,7 +80,7 @@ impl JobsRepository for JobsRepositoryPg {
         .bind(&req.payload)
         .bind(req.max_attempts)
         .bind(req.run_at)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
         Ok(id)
     }

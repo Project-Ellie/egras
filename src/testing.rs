@@ -107,6 +107,7 @@ pub struct MockAppStateBuilder {
     tokens: Option<Arc<dyn crate::security::persistence::TokenRepository>>,
     inbound_channels: Option<Arc<dyn crate::tenants::persistence::InboundChannelRepository>>,
     jobs: Option<Arc<dyn crate::jobs::JobsEnqueuer>>,
+    outbox: Option<Arc<dyn crate::outbox::OutboxAppender>>,
     jwt_config: Option<crate::auth::jwt::JwtConfig>,
     password_reset_ttl_secs: Option<i64>,
 }
@@ -123,6 +124,7 @@ impl MockAppStateBuilder {
             tokens: None,
             inbound_channels: None,
             jobs: None,
+            outbox: None,
             jwt_config: None,
             password_reset_ttl_secs: None,
         }
@@ -220,6 +222,18 @@ impl MockAppStateBuilder {
         self
     }
 
+    pub fn with_pg_outbox_repo(mut self) -> Self {
+        self.outbox = Some(Arc::new(
+            crate::outbox::persistence::OutboxRepositoryPg::new(self.pool.clone()),
+        ));
+        self
+    }
+
+    pub fn outbox(mut self, r: Arc<dyn crate::outbox::OutboxAppender>) -> Self {
+        self.outbox = Some(r);
+        self
+    }
+
     pub fn build(self) -> AppState {
         AppState {
             audit_recorder: self.audit_recorder.expect("audit_recorder not set"),
@@ -231,6 +245,11 @@ impl MockAppStateBuilder {
             inbound_channels: self.inbound_channels.expect("inbound_channels not set"),
             jobs: self.jobs.unwrap_or_else(|| {
                 Arc::new(crate::jobs::persistence::JobsRepositoryPg::new(
+                    self.pool.clone(),
+                ))
+            }),
+            outbox: self.outbox.unwrap_or_else(|| {
+                Arc::new(crate::outbox::persistence::OutboxRepositoryPg::new(
                     self.pool.clone(),
                 ))
             }),
@@ -260,6 +279,7 @@ impl TestApp {
             router,
             audit: audit_handle,
             jobs: jobs_handle,
+            outbox: outbox_handle,
         } = crate::build_app(pool, cfg).await.expect("build_app");
 
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
@@ -274,6 +294,7 @@ impl TestApp {
                 rx.await.ok();
             });
             let _ = server.await;
+            outbox_handle.shutdown().await;
             jobs_handle.shutdown().await;
             audit_handle.shutdown().await;
         });

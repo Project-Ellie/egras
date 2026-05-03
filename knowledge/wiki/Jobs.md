@@ -64,6 +64,15 @@ Indexes: `(state, run_at) WHERE state IN ('pending','running')` for the claim ho
 - `JobError::Permanent` short-circuits retries straight to `dead`.
 - `JobError::Retryable` increments `attempts` and reschedules with exponential backoff capped at `backoff_max`. Reaching `max_attempts` transitions to `dead`.
 
+## Sources of jobs
+
+Jobs reach the queue via two paths:
+
+1. **Direct enqueue from a service** — for fire-and-forget work whose existence is OK to lose if the surrounding domain transaction rolls back. Use `state.jobs.enqueue(...)`.
+2. **Outbox relay** — for work that must publish *atomically* with a domain change ("create user → send welcome email"). The service appends to the [[Outbox]] inside the same transaction; the relayer later bridges committed events into this queue via `enqueue_in_tx`. See [[Outbox]] for the full flow.
+
+Both paths land in the same `jobs` table and use the same retry / dead-letter machinery. Handlers don't care which producer enqueued them.
+
 ## Enqueueing from a service
 
 Services depend on `Arc<dyn JobsEnqueuer>` via `AppState::jobs` — the narrow facade exposes only `enqueue`, hiding `claim_due` / `mark_*` from business code.
@@ -117,5 +126,5 @@ Audit events fire from the HTTP hot path. Persisting through a polled Postgres q
 
 - [[Architecture]] — module map
 - [[Audit-System]] — the in-memory worker contrasted above
-- [[future-enhancements/Outbox-Pattern]] — sits on top of this for at-least-once event publishing
+- [[Outbox]] — feeds this queue for transaction-coupled domain events
 - Original spec: [`docs/superpowers/specs/2026-05-03-background-jobs-design.md`](../../docs/superpowers/specs/2026-05-03-background-jobs-design.md)

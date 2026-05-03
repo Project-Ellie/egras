@@ -67,6 +67,7 @@ async fn run_serve(cfg: AppConfig) -> anyhow::Result<()> {
         router,
         audit: audit_handle,
         jobs: jobs_handle,
+        outbox: outbox_handle,
     } = handles;
 
     let listener = tokio::net::TcpListener::bind(&cfg.bind_address).await?;
@@ -93,6 +94,7 @@ async fn run_serve(cfg: AppConfig) -> anyhow::Result<()> {
         .with_graceful_shutdown(shutdown)
         .await?;
 
+    outbox_handle.shutdown().await;
     jobs_handle.shutdown().await;
     audit_handle.shutdown().await;
     pool.close().await;
