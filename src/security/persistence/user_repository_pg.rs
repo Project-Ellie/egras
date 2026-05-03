@@ -4,7 +4,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::user_repository::{CreateAndAddError, UserRepoError, UserRepository};
-use crate::security::model::{User, UserMembership};
+use crate::security::model::{User, UserKind, UserMembership};
 
 pub struct UserRepositoryPg {
     pool: PgPool,
@@ -28,7 +28,7 @@ impl UserRepository for UserRepositoryPg {
         let row = sqlx::query_as::<_, UserRow>(
             "INSERT INTO users (id, username, email, password_hash) \
              VALUES ($1, $2, $3, $4) \
-             RETURNING id, username, email, password_hash, created_at, updated_at",
+             RETURNING id, username, email, password_hash, kind, created_at, updated_at",
         )
         .bind(id)
         .bind(username)
@@ -57,7 +57,7 @@ impl UserRepository for UserRepositoryPg {
         username_or_email: &str,
     ) -> Result<Option<User>, UserRepoError> {
         let row = sqlx::query_as::<_, UserRow>(
-            "SELECT id, username, email, password_hash, created_at, updated_at \
+            "SELECT id, username, email, password_hash, kind, created_at, updated_at \
              FROM users WHERE username = $1 OR email = $1 LIMIT 1",
         )
         .bind(username_or_email)
@@ -68,7 +68,7 @@ impl UserRepository for UserRepositoryPg {
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, UserRepoError> {
         let row = sqlx::query_as::<_, UserRow>(
-            "SELECT id, username, email, password_hash, created_at, updated_at \
+            "SELECT id, username, email, password_hash, kind, created_at, updated_at \
              FROM users WHERE id = $1",
         )
         .bind(id)
@@ -118,7 +118,7 @@ impl UserRepository for UserRepositoryPg {
         let rows = match (org_id, q, cursor) {
             (None, None, None) => {
                 sqlx::query_as::<_, UserRow>(
-                    "SELECT id, username, email, password_hash, created_at, updated_at \
+                    "SELECT id, username, email, password_hash, kind, created_at, updated_at \
                      FROM users \
                      ORDER BY created_at ASC, id ASC \
                      LIMIT $1",
@@ -129,7 +129,7 @@ impl UserRepository for UserRepositoryPg {
             }
             (None, None, Some(c)) => {
                 sqlx::query_as::<_, UserRow>(
-                    "SELECT id, username, email, password_hash, created_at, updated_at \
+                    "SELECT id, username, email, password_hash, kind, created_at, updated_at \
                      FROM users \
                      WHERE (created_at, id) > ($1, $2) \
                      ORDER BY created_at ASC, id ASC \
@@ -142,7 +142,7 @@ impl UserRepository for UserRepositoryPg {
                 .await?
             }
             (Some(oid), None, None) => sqlx::query_as::<_, UserRow>(
-                "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
+                "SELECT u.id, u.username, u.email, u.password_hash, u.kind, u.created_at, u.updated_at \
                      FROM users u \
                      JOIN user_organisation_roles uor ON uor.user_id = u.id \
                      WHERE uor.organisation_id = $1 \
@@ -155,7 +155,7 @@ impl UserRepository for UserRepositoryPg {
             .fetch_all(&self.pool)
             .await?,
             (Some(oid), None, Some(c)) => sqlx::query_as::<_, UserRow>(
-                "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
+                "SELECT u.id, u.username, u.email, u.password_hash, u.kind, u.created_at, u.updated_at \
                      FROM users u \
                      JOIN user_organisation_roles uor ON uor.user_id = u.id \
                      WHERE uor.organisation_id = $1 \
@@ -173,7 +173,7 @@ impl UserRepository for UserRepositoryPg {
             (None, Some(query), None) => {
                 let pattern = format!("%{query}%");
                 sqlx::query_as::<_, UserRow>(
-                    "SELECT id, username, email, password_hash, created_at, updated_at \
+                    "SELECT id, username, email, password_hash, kind, created_at, updated_at \
                      FROM users \
                      WHERE username ILIKE $1 OR email ILIKE $1 \
                      ORDER BY created_at ASC, id ASC \
@@ -187,7 +187,7 @@ impl UserRepository for UserRepositoryPg {
             (None, Some(query), Some(c)) => {
                 let pattern = format!("%{query}%");
                 sqlx::query_as::<_, UserRow>(
-                    "SELECT id, username, email, password_hash, created_at, updated_at \
+                    "SELECT id, username, email, password_hash, kind, created_at, updated_at \
                      FROM users \
                      WHERE (username ILIKE $1 OR email ILIKE $1) \
                        AND (created_at, id) > ($2, $3) \
@@ -204,7 +204,7 @@ impl UserRepository for UserRepositoryPg {
             (Some(oid), Some(query), None) => {
                 let pattern = format!("%{query}%");
                 sqlx::query_as::<_, UserRow>(
-                    "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
+                    "SELECT u.id, u.username, u.email, u.password_hash, u.kind, u.created_at, u.updated_at \
                      FROM users u \
                      JOIN user_organisation_roles uor ON uor.user_id = u.id \
                      WHERE uor.organisation_id = $1 \
@@ -222,7 +222,7 @@ impl UserRepository for UserRepositoryPg {
             (Some(oid), Some(query), Some(c)) => {
                 let pattern = format!("%{query}%");
                 sqlx::query_as::<_, UserRow>(
-                    "SELECT u.id, u.username, u.email, u.password_hash, u.created_at, u.updated_at \
+                    "SELECT u.id, u.username, u.email, u.password_hash, u.kind, u.created_at, u.updated_at \
                      FROM users u \
                      JOIN user_organisation_roles uor ON uor.user_id = u.id \
                      WHERE uor.organisation_id = $1 \
@@ -303,7 +303,7 @@ impl UserRepository for UserRepositoryPg {
         let row = sqlx::query_as::<_, UserRow>(
             "INSERT INTO users (id, username, email, password_hash) \
              VALUES ($1, $2, $3, $4) \
-             RETURNING id, username, email, password_hash, created_at, updated_at",
+             RETURNING id, username, email, password_hash, kind, created_at, updated_at",
         )
         .bind(id)
         .bind(username)
@@ -361,17 +361,20 @@ struct UserRow {
     username: String,
     email: String,
     password_hash: String,
+    kind: String,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
 
 impl From<UserRow> for User {
     fn from(r: UserRow) -> Self {
+        let kind = r.kind.parse::<UserKind>().unwrap_or(UserKind::Human);
         User {
             id: r.id,
             username: r.username,
             email: r.email,
             password_hash: r.password_hash,
+            kind,
             created_at: r.created_at,
             updated_at: r.updated_at,
         }

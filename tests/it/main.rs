@@ -24,6 +24,8 @@ mod security_http_list_users_test;
 mod security_http_login_test;
 mod security_http_password_reset_test;
 mod security_http_register_test;
+mod security_persistence_api_keys_test;
+mod security_persistence_service_accounts_test;
 mod security_persistence_test;
 mod security_service_auth_flows_test;
 mod security_service_list_users_test;
