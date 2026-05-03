@@ -1,6 +1,3 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use std::sync::Arc;
 
 use egras::audit::persistence::{AuditRepository, AuditRepositoryPg};
@@ -17,7 +14,7 @@ use egras::tenants::service::update_inbound_channel::{
 };
 use egras::testing::{BlockingAuditRecorder, MockAppStateBuilder, TestPool};
 
-use common::seed::{seed_org, seed_user};
+use crate::common::seed::{seed_org, seed_user};
 
 fn build_state_with_recorder(
     pool: sqlx::PgPool,

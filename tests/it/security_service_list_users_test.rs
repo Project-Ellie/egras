@@ -1,7 +1,4 @@
-#[path = "common/mod.rs"]
-mod common;
-
-use common::seed::{grant_role, seed_org, seed_user};
+use crate::common::seed::{grant_role, seed_org, seed_user};
 use egras::security::service::list_users::{list_users, ListUsersError, ListUsersInput};
 use egras::testing::{MockAppStateBuilder, TestPool};
 use uuid::Uuid;

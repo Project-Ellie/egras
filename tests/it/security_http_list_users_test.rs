@@ -1,9 +1,6 @@
-#[path = "common/mod.rs"]
-mod common;
-
-use common::auth::bearer;
-use common::fixtures::OPERATOR_ORG_ID;
-use common::seed::{grant_role, seed_org, seed_user};
+use crate::common::auth::bearer;
+use crate::common::fixtures::OPERATOR_ORG_ID;
+use crate::common::seed::{grant_role, seed_org, seed_user};
 use egras::config::AppConfig;
 use egras::testing::{TestApp, TestPool};
 use reqwest::StatusCode;

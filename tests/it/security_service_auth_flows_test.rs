@@ -1,8 +1,5 @@
-#[path = "common/mod.rs"]
-mod common;
-
+use crate::common::seed::{grant_role, seed_org, seed_user, seed_user_with_password};
 use chrono::Utc;
-use common::seed::{grant_role, seed_org, seed_user, seed_user_with_password};
 use egras::security::service::change_password::{
     change_password, ChangePasswordError, ChangePasswordInput,
 };

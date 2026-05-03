@@ -1,10 +1,7 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use egras::tenants::service::assign_role::{assign_role, AssignRoleError, AssignRoleInput};
 use egras::testing::{MockAppStateBuilder, TestPool};
 
-use common::seed::{grant_role, seed_org, seed_user};
+use crate::common::seed::{grant_role, seed_org, seed_user};
 
 #[tokio::test]
 async fn assign_role_happy_path_was_new_true() {

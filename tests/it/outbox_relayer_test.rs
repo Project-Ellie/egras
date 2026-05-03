@@ -220,12 +220,23 @@ async fn end_to_end_append_relay_handler_runs() {
     }
     assert_eq!(seen.lock().await[0], payload);
 
-    // The corresponding job should now be done.
-    let job = sqlx::query_as::<_, (String,)>("SELECT state FROM jobs LIMIT 1")
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    assert_eq!(job.0, JobState::Done.as_str());
+    // The corresponding job reaches `done` once the runner finishes its
+    // post-handler bookkeeping. Poll instead of reading once — the handler
+    // can observe `seen` before `mark_done` has been written.
+    let deadline = std::time::Instant::now() + Duration::from_secs(3);
+    loop {
+        let state: String = sqlx::query_scalar("SELECT state FROM jobs LIMIT 1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        if state == JobState::Done.as_str() {
+            break;
+        }
+        if std::time::Instant::now() > deadline {
+            panic!("job did not reach Done within timeout (last state: {state})");
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
 
     relayer_handle.shutdown().await;
     runner_handle.shutdown().await;

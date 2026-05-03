@@ -1,13 +1,10 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use egras::config::AppConfig;
 use egras::testing::{TestApp, TestPool};
 use reqwest::StatusCode;
 use serde_json::json;
 
-use common::auth::bearer;
-use common::seed::{grant_role, seed_org, seed_user};
+use crate::common::auth::bearer;
+use crate::common::seed::{grant_role, seed_org, seed_user};
 
 fn test_config() -> AppConfig {
     AppConfig::default_for_tests()

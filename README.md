@@ -107,7 +107,7 @@ egras dump-openapi
 
 ## Running tests
 
-Tests require a separate PostgreSQL database. Each test creates an isolated schema via `TestPool::fresh()`.
+Tests require a separate PostgreSQL database. Each test creates an isolated schema via `TestPool::fresh()`. All integration tests live in a single `it` binary at `tests/it/main.rs` so they link once instead of per-file — keep new tests in that tree.
 
 ```bash
 # Start Postgres (if not already running)
@@ -115,6 +115,11 @@ docker compose up -d postgres
 
 TEST_DATABASE_URL=postgres://egras:egras@localhost:5432/postgres \
   cargo test --all-features
+
+# Recommended runner — better parallelism + output:
+cargo install cargo-nextest --locked
+TEST_DATABASE_URL=postgres://egras:egras@localhost:5432/postgres \
+  cargo nextest run --all-features
 ```
 
 ---

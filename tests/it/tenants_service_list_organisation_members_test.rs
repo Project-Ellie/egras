@@ -1,12 +1,9 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use egras::tenants::service::list_organisation_members::{
     list_organisation_members, ListMembersError, ListMembersInput,
 };
 use egras::testing::{MockAppStateBuilder, TestPool};
 
-use common::seed::{grant_role, seed_org, seed_user};
+use crate::common::seed::{grant_role, seed_org, seed_user};
 
 #[tokio::test]
 async fn list_organisation_members_happy_path() {

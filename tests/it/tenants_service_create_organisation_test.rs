@@ -1,6 +1,3 @@
-#[path = "common/mod.rs"]
-mod common;
-
 use std::sync::Arc;
 
 use egras::audit::persistence::{AuditRepository, AuditRepositoryPg};
@@ -10,7 +7,7 @@ use egras::tenants::service::create_organisation::{
 };
 use egras::testing::{BlockingAuditRecorder, MockAppStateBuilder, TestPool};
 
-use common::seed::{seed_org, seed_user};
+use crate::common::seed::{seed_org, seed_user};
 
 #[tokio::test]
 async fn create_organisation_happy_path_returns_summary_and_emits_audit() {
