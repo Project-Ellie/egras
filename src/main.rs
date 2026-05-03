@@ -62,7 +62,12 @@ async fn run_serve(cfg: AppConfig) -> anyhow::Result<()> {
     let pool = egras::db::build_pool(&cfg).await?;
     egras::db::run_migrations(&pool).await?;
 
-    let (router, audit_handle) = egras::build_app(pool.clone(), cfg.clone()).await?;
+    let handles = egras::build_app(pool.clone(), cfg.clone()).await?;
+    let egras::AppHandles {
+        router,
+        audit: audit_handle,
+        jobs: jobs_handle,
+    } = handles;
 
     let listener = tokio::net::TcpListener::bind(&cfg.bind_address).await?;
     tracing::info!(bind = %cfg.bind_address, "egras listening");
@@ -88,6 +93,7 @@ async fn run_serve(cfg: AppConfig) -> anyhow::Result<()> {
         .with_graceful_shutdown(shutdown)
         .await?;
 
+    jobs_handle.shutdown().await;
     audit_handle.shutdown().await;
     pool.close().await;
     Ok(())

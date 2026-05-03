@@ -4,6 +4,7 @@ pub mod auth;
 pub mod config;
 pub mod db;
 pub mod errors;
+pub mod jobs;
 pub mod openapi;
 pub mod pagination;
 pub mod security;
@@ -28,11 +29,16 @@ use crate::audit::service::{ChannelAuditRecorder, ListAuditEventsImpl};
 use crate::audit::worker::{AuditWorker, AuditWorkerHandle};
 use crate::auth::middleware::{AuthLayer, PermissionLoader, RevocationChecker};
 use crate::config::AppConfig;
+use crate::jobs::persistence::{JobsRepository, JobsRepositoryPg};
+use crate::jobs::{JobRunner, JobRunnerConfig, JobRunnerHandle, JobsEnqueuer};
 
-pub async fn build_app(
-    pool: PgPool,
-    cfg: AppConfig,
-) -> anyhow::Result<(Router, AuditWorkerHandle)> {
+pub struct AppHandles {
+    pub router: Router,
+    pub audit: AuditWorkerHandle,
+    pub jobs: JobRunnerHandle,
+}
+
+pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandles> {
     // 1. Audit infra
     let (audit_tx, audit_rx) = mpsc::channel(cfg.audit_channel_capacity);
     let audit_repo: Arc<dyn crate::audit::persistence::AuditRepository> =
@@ -65,6 +71,11 @@ pub async fn build_app(
     let inbound_channels: Arc<dyn crate::tenants::persistence::InboundChannelRepository> =
         Arc::new(crate::tenants::persistence::InboundChannelRepositoryPg::new(pool.clone()));
 
+    let jobs_pg = Arc::new(JobsRepositoryPg::new(pool.clone()));
+    let jobs_repo: Arc<dyn JobsRepository> = jobs_pg.clone();
+    let jobs_enqueuer: Arc<dyn JobsEnqueuer> = jobs_pg;
+    let jobs_handle = JobRunner::new(jobs_repo, JobRunnerConfig::default()).spawn();
+
     let state = AppState {
         audit_recorder,
         list_audit_events,
@@ -73,6 +84,7 @@ pub async fn build_app(
         inbound_channels,
         users,
         tokens,
+        jobs: jobs_enqueuer,
         jwt_config: crate::auth::jwt::JwtConfig {
             secret: cfg.jwt_secret.clone(),
             issuer: cfg.jwt_issuer.clone(),
@@ -127,7 +139,11 @@ pub async fn build_app(
         .layer(TraceLayer::new_for_http())
         .layer(cors);
 
-    Ok((router, audit_handle))
+    Ok(AppHandles {
+        router,
+        audit: audit_handle,
+        jobs: jobs_handle,
+    })
 }
 
 async fn health() -> Json<serde_json::Value> {

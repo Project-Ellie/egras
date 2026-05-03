@@ -44,16 +44,17 @@ audit/     │  handlers   list_evts   AuditEvent AuditRepositoryPg
 
 These live directly in `src/` and are shared across all domains:
 
-| Module | Purpose |
-|--------|---------|
-| [`src/auth/`](../../src/auth/) | JWT encode/decode, tower middleware, permission loading |
-| [`src/app_state.rs`](../../src/app_state.rs) | Dependency injection container (`AppState`) |
-| [`src/config.rs`](../../src/config.rs) | Env-var loading and validation |
-| [`src/errors.rs`](../../src/errors.rs) | `AppError` enum → RFC 7807 JSON responses |
-| [`src/pagination.rs`](../../src/pagination.rs) | Cursor codec shared across paginated endpoints |
-| [`src/db.rs`](../../src/db.rs) | Pool construction, migration runner |
-| [`src/lib.rs`](../../src/lib.rs) | `build_app()` — assembles the full Axum router |
-| [`src/openapi.rs`](../../src/openapi.rs) | OpenAPI 3.1 schema via utoipa |
+| Module                                         | Purpose                                                 |
+| ---------------------------------------------- | ------------------------------------------------------- |
+| [`src/auth/`](../../src/auth/)                 | JWT encode/decode, tower middleware, permission loading |
+| [`src/app_state.rs`](../../src/app_state.rs)   | Dependency injection container (`AppState`)             |
+| [`src/config.rs`](../../src/config.rs)         | Env-var loading and validation                          |
+| [`src/errors.rs`](../../src/errors.rs)         | `AppError` enum → RFC 7807 JSON responses               |
+| [`src/pagination.rs`](../../src/pagination.rs) | Cursor codec shared across paginated endpoints          |
+| [`src/db.rs`](../../src/db.rs)                 | Pool construction, migration runner                     |
+| [`src/lib.rs`](../../src/lib.rs)               | `build_app()` — assembles the full Axum router          |
+| [`src/jobs/`](../../src/jobs/)                 | Durable background-job queue + runner — see [[Jobs]]    |
+| [`src/openapi.rs`](../../src/openapi.rs)       | OpenAPI 3.1 schema via utoipa                           |
 
 ## Dependency Injection via `AppState`
 

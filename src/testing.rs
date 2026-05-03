@@ -106,6 +106,7 @@ pub struct MockAppStateBuilder {
     users: Option<Arc<dyn crate::security::persistence::UserRepository>>,
     tokens: Option<Arc<dyn crate::security::persistence::TokenRepository>>,
     inbound_channels: Option<Arc<dyn crate::tenants::persistence::InboundChannelRepository>>,
+    jobs: Option<Arc<dyn crate::jobs::JobsEnqueuer>>,
     jwt_config: Option<crate::auth::jwt::JwtConfig>,
     password_reset_ttl_secs: Option<i64>,
 }
@@ -121,6 +122,7 @@ impl MockAppStateBuilder {
             users: None,
             tokens: None,
             inbound_channels: None,
+            jobs: None,
             jwt_config: None,
             password_reset_ttl_secs: None,
         }
@@ -206,6 +208,18 @@ impl MockAppStateBuilder {
         self
     }
 
+    pub fn with_pg_jobs_repo(mut self) -> Self {
+        self.jobs = Some(Arc::new(crate::jobs::persistence::JobsRepositoryPg::new(
+            self.pool.clone(),
+        )));
+        self
+    }
+
+    pub fn jobs(mut self, r: Arc<dyn crate::jobs::JobsEnqueuer>) -> Self {
+        self.jobs = Some(r);
+        self
+    }
+
     pub fn build(self) -> AppState {
         AppState {
             audit_recorder: self.audit_recorder.expect("audit_recorder not set"),
@@ -215,6 +229,11 @@ impl MockAppStateBuilder {
             users: self.users.expect("users not set"),
             tokens: self.tokens.expect("tokens not set"),
             inbound_channels: self.inbound_channels.expect("inbound_channels not set"),
+            jobs: self.jobs.unwrap_or_else(|| {
+                Arc::new(crate::jobs::persistence::JobsRepositoryPg::new(
+                    self.pool.clone(),
+                ))
+            }),
             jwt_config: self
                 .jwt_config
                 .unwrap_or_else(|| crate::auth::jwt::JwtConfig {
@@ -237,7 +256,11 @@ pub struct TestApp {
 impl TestApp {
     /// Spawn `build_app` bound to port 0. Returns base URL "http://127.0.0.1:<port>".
     pub async fn spawn(pool: PgPool, cfg: crate::config::AppConfig) -> Self {
-        let (router, audit_handle) = crate::build_app(pool, cfg).await.expect("build_app");
+        let crate::AppHandles {
+            router,
+            audit: audit_handle,
+            jobs: jobs_handle,
+        } = crate::build_app(pool, cfg).await.expect("build_app");
 
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
@@ -251,6 +274,7 @@ impl TestApp {
                 rx.await.ok();
             });
             let _ = server.await;
+            jobs_handle.shutdown().await;
             audit_handle.shutdown().await;
         });
 
