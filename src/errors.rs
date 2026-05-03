@@ -18,6 +18,8 @@ pub enum ErrorSlug {
     AuthInvalidCredentials,
     #[serde(rename = "permission.denied")]
     PermissionDenied,
+    #[serde(rename = "auth.requires_user_credentials")]
+    RequiresUserCredentials,
     #[serde(rename = "resource.not_found")]
     ResourceNotFound,
     #[serde(rename = "resource.conflict")]
@@ -35,6 +37,7 @@ impl ErrorSlug {
             Self::AuthUnauthenticated => "auth.unauthenticated",
             Self::AuthInvalidCredentials => "auth.invalid_credentials",
             Self::PermissionDenied => "permission.denied",
+            Self::RequiresUserCredentials => "auth.requires_user_credentials",
             Self::ResourceNotFound => "resource.not_found",
             Self::ResourceConflict => "resource.conflict",
             Self::UserNoOrganisation => "user.no_organisation",
@@ -59,6 +62,9 @@ pub enum AppError {
     #[error("permission denied: missing {code}")]
     PermissionDenied { code: String },
 
+    #[error("requires user credentials (this endpoint is not callable with an API key)")]
+    RequiresUserCredentials,
+
     #[error("not found: {resource}")]
     NotFound { resource: String },
 
@@ -79,6 +85,7 @@ impl AppError {
             Self::Unauthenticated { .. } => ErrorSlug::AuthUnauthenticated,
             Self::InvalidCredentials => ErrorSlug::AuthInvalidCredentials,
             Self::PermissionDenied { .. } => ErrorSlug::PermissionDenied,
+            Self::RequiresUserCredentials => ErrorSlug::RequiresUserCredentials,
             Self::NotFound { .. } => ErrorSlug::ResourceNotFound,
             Self::Conflict { .. } => ErrorSlug::ResourceConflict,
             Self::UserNoOrganisation => ErrorSlug::UserNoOrganisation,
@@ -92,6 +99,7 @@ impl AppError {
             Self::Unauthenticated { .. } => StatusCode::UNAUTHORIZED,
             Self::InvalidCredentials => StatusCode::UNAUTHORIZED,
             Self::PermissionDenied { .. } => StatusCode::FORBIDDEN,
+            Self::RequiresUserCredentials => StatusCode::FORBIDDEN,
             Self::NotFound { .. } => StatusCode::NOT_FOUND,
             Self::Conflict { .. } => StatusCode::CONFLICT,
             Self::UserNoOrganisation => StatusCode::FORBIDDEN,
@@ -105,6 +113,7 @@ impl AppError {
             ErrorSlug::AuthUnauthenticated => "Unauthenticated",
             ErrorSlug::AuthInvalidCredentials => "Invalid credentials",
             ErrorSlug::PermissionDenied => "Permission denied",
+            ErrorSlug::RequiresUserCredentials => "Requires user credentials",
             ErrorSlug::ResourceNotFound => "Not found",
             ErrorSlug::ResourceConflict => "Conflict",
             ErrorSlug::UserNoOrganisation => "User has no organisation",
@@ -118,6 +127,10 @@ impl AppError {
             Self::Unauthenticated { reason } => format!("Authentication required ({reason})."),
             Self::InvalidCredentials => "Invalid username or password.".to_string(),
             Self::PermissionDenied { code } => format!("missing permission: {code}"),
+            Self::RequiresUserCredentials => {
+                "this endpoint requires user credentials and cannot be called with an API key"
+                    .to_string()
+            }
             Self::NotFound { resource } => format!("{resource} was not found."),
             Self::Conflict { reason } => reason.clone(),
             Self::UserNoOrganisation => "The user does not belong to any organisation.".to_string(),

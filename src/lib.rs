@@ -136,11 +136,16 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
         );
 
     // 3. Protected routes
+    let api_key_verifier = crate::auth::middleware::ApiKeyVerifier::pg(
+        state.api_keys.clone(),
+        state.service_accounts.clone(),
+    );
     let auth_layer = AuthLayer::new(
         cfg.jwt_secret.clone(),
         cfg.jwt_issuer.clone(),
         PermissionLoader::pg(pool.clone()),
         RevocationChecker::pg(pool.clone()),
+        api_key_verifier,
     );
     let protected: Router<AppState> = Router::new()
         .nest("/api/v1/tenants", crate::tenants::interface::router())

@@ -45,6 +45,21 @@ impl PermissionSet {
         v.sort();
         v
     }
+
+    /// Restrict to the intersection of `self` and `allowed`. Used by the
+    /// API-key auth path to apply per-key `scopes` to the SA's loaded
+    /// permissions: `effective = sa_perms ∩ key.scopes`.
+    pub fn intersect(&self, allowed: &[String]) -> Self {
+        let allow: HashSet<&str> = allowed.iter().map(String::as_str).collect();
+        Self {
+            codes: self
+                .codes
+                .iter()
+                .filter(|c| allow.contains(c.as_str()))
+                .cloned()
+                .collect(),
+        }
+    }
 }
 
 /// Axum extractor that enforces the caller holds `code`.
@@ -112,5 +127,25 @@ pub fn authorise_org(parts: &Parts, organisation_id: Uuid) -> Result<(), AppErro
         Err(AppError::NotFound {
             resource: "organisation".into(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn intersect_keeps_only_allowed() {
+        let p = PermissionSet::from_codes(["a".to_string(), "b".to_string(), "c".to_string()]);
+        let r = p.intersect(&["a".to_string(), "c".to_string(), "d".to_string()]);
+        let codes = r.iter_sorted();
+        assert_eq!(codes, vec!["a", "c"]);
+    }
+
+    #[test]
+    fn intersect_with_empty_yields_empty() {
+        let p = PermissionSet::from_codes(["a".to_string()]);
+        let r = p.intersect(&[]);
+        assert!(r.iter_sorted().is_empty());
     }
 }

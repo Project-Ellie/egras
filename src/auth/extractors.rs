@@ -3,10 +3,85 @@ use std::marker::PhantomData;
 use async_trait::async_trait;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
+use uuid::Uuid;
 
 use crate::auth::jwt::Claims;
 use crate::auth::permissions::PermissionSet;
 use crate::errors::AppError;
+
+/// Indicates which kind of credential authenticated the current request.
+/// Inserted into request extensions by `AuthLayer` alongside `Claims` and
+/// `PermissionSet`. Handlers that need to differentiate (or reject API keys)
+/// extract this; everything else continues to extract `AuthedCaller`.
+#[derive(Debug, Clone)]
+pub enum Caller {
+    User {
+        user_id: Uuid,
+        org_id: Uuid,
+        jti: Uuid,
+    },
+    ApiKey {
+        key_id: Uuid,
+        sa_user_id: Uuid,
+        org_id: Uuid,
+    },
+}
+
+impl Caller {
+    pub fn org_id(&self) -> Uuid {
+        match self {
+            Caller::User { org_id, .. } | Caller::ApiKey { org_id, .. } => *org_id,
+        }
+    }
+    pub fn principal_user_id(&self) -> Uuid {
+        match self {
+            Caller::User { user_id, .. } => *user_id,
+            Caller::ApiKey { sa_user_id, .. } => *sa_user_id,
+        }
+    }
+    pub fn is_user(&self) -> bool {
+        matches!(self, Caller::User { .. })
+    }
+}
+
+/// Extractor that succeeds only when the caller is a human user (i.e. JWT auth).
+/// Returns 403 `auth.requires_user_credentials` for API-key callers and 401 if
+/// the layer is misconfigured (no `Caller` in extensions).
+pub struct RequireHumanCaller;
+
+#[async_trait]
+impl<S: Send + Sync> FromRequestParts<S> for RequireHumanCaller {
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let caller =
+            parts
+                .extensions
+                .get::<Caller>()
+                .cloned()
+                .ok_or_else(|| AppError::Unauthenticated {
+                    reason: "no_caller".into(),
+                })?;
+        match caller {
+            Caller::User { .. } => Ok(RequireHumanCaller),
+            Caller::ApiKey { .. } => Err(AppError::RequiresUserCredentials),
+        }
+    }
+}
+
+#[async_trait]
+impl<S: Send + Sync> FromRequestParts<S> for Caller {
+    type Rejection = AppError;
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        parts
+            .extensions
+            .get::<Caller>()
+            .cloned()
+            .ok_or_else(|| AppError::Unauthenticated {
+                reason: "no_caller".into(),
+            })
+    }
+}
 
 /// Extractor that copies `Claims` and `PermissionSet` out of the request
 /// extensions (inserted by `AuthLayer`). Returns `Unauthenticated` if the

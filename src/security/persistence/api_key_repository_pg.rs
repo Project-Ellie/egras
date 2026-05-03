@@ -1,9 +1,13 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::api_key_repository::{ApiKeyRepoError, ApiKeyRepository, ApiKeyRow, NewApiKeyRow};
+use super::service_account_repository::ServiceAccountRepository;
+use crate::auth::middleware::{ApiKeyVerifier, ApiKeyVerifierStrategy, VerifiedKey};
 use crate::security::model::ApiKey;
 
 pub struct ApiKeyRepositoryPg {
@@ -212,5 +216,63 @@ impl ApiKeyRepository for ApiKeyRepositoryPg {
             .await
             .map_err(|e| ApiKeyRepoError::Other(e.into()))?;
         Ok(key)
+    }
+}
+
+/// Postgres-backed implementation of `ApiKeyVerifierStrategy`. Wraps both
+/// repositories so the AuthLayer can perform prefix → SA + scope lookup
+/// AND the throttled last-used update through the same trait object.
+pub struct PgApiKeyVerifier {
+    pub api_keys: Arc<dyn ApiKeyRepository>,
+    pub service_accounts: Arc<dyn ServiceAccountRepository>,
+}
+
+impl PgApiKeyVerifier {
+    pub fn new(
+        api_keys: Arc<dyn ApiKeyRepository>,
+        service_accounts: Arc<dyn ServiceAccountRepository>,
+    ) -> Self {
+        Self {
+            api_keys,
+            service_accounts,
+        }
+    }
+}
+
+#[async_trait]
+impl ApiKeyVerifierStrategy for PgApiKeyVerifier {
+    async fn verify(&self, prefix: &str, secret: &str) -> anyhow::Result<Option<VerifiedKey>> {
+        let row = match self.api_keys.find_active_by_prefix(prefix).await? {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        if !crate::security::service::api_key_secret::verify_secret(secret, &row.secret_hash)? {
+            return Ok(None);
+        }
+        Ok(Some(VerifiedKey {
+            key_id: row.key.id,
+            sa_user_id: row.key.service_account_user_id,
+            organisation_id: row.organisation_id,
+            scopes: row.key.scopes,
+        }))
+    }
+
+    async fn touch_last_used(&self, key_id: Uuid, sa_user_id: Uuid) {
+        if let Err(e) = self.api_keys.touch_last_used(key_id).await {
+            tracing::warn!(error = %e, key_id = %key_id, "api_key touch_last_used failed");
+        }
+        if let Err(e) = self.service_accounts.touch_last_used(sa_user_id).await {
+            tracing::warn!(error = %e, sa_user_id = %sa_user_id, "service_account touch_last_used failed");
+        }
+    }
+}
+
+impl ApiKeyVerifier {
+    /// Convenience constructor for the default Pg-backed verifier.
+    pub fn pg(
+        api_keys: Arc<dyn ApiKeyRepository>,
+        service_accounts: Arc<dyn ServiceAccountRepository>,
+    ) -> Self {
+        Self::new(PgApiKeyVerifier::new(api_keys, service_accounts))
     }
 }

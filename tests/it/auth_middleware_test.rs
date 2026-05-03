@@ -33,6 +33,7 @@ fn router_with_static_permissions() -> Router {
             "egras".into(),
             loader,
             egras::auth::middleware::RevocationChecker::none(),
+            egras::auth::middleware::ApiKeyVerifier::new(egras::auth::middleware::NoApiKeyVerifier),
         ))
 }
 
