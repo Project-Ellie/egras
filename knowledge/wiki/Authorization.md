@@ -36,8 +36,18 @@ impl PermissionSet {
     pub fn is_operator_over_tenants(&self) -> bool  // has "tenants.manage_all"
     pub fn is_operator_over_users(&self) -> bool    // has "users.manage_all"
     pub fn is_audit_read_all(&self) -> bool         // has "audit.read_all"
+
+    /// Restrict to the intersection of self and `allowed`. Used by the
+    /// API-key auth path to apply per-key scopes; see [[Service-Accounts]].
+    pub fn intersect(&self, allowed: &[String]) -> Self
 }
 ```
+
+For API-key callers, the middleware computes `effective = sa_perms ∩ key.scopes` (when scopes are set) before inserting the `PermissionSet` into request extensions. Downstream handlers see a normal set and don't need to know whether the request was authenticated by a JWT or an API key.
+
+### `RequireHumanCaller`
+
+In addition to the permission-based extractors below, handlers can require a human caller (rejecting API-key callers regardless of permissions) via the `RequireHumanCaller` extractor. Returns `403 auth.requires_user_credentials` for API-key callers. Used by all SA / API-key management endpoints (pivot-escalation guard) plus identity-lifecycle endpoints (logout, change-password, switch-org, register). See [[Service-Accounts]].
 
 `PermissionSet` is injected into request extensions by `AuthLayer` and extracted by handlers via `AuthedCaller` or `Perm<P>`.
 
@@ -161,6 +171,8 @@ These permissions don't grant access via an explicit bypass in every handler —
 | `users.manage_all` | `POST /api/v1/security/register` (cross-tenant registration) |
 | `audit.read_all` | `GET /api/v1/audit/events` (any org) |
 | `audit.read_own_org` | `GET /api/v1/audit/events` (own org only) |
+| `service_accounts.read` | `GET /api/v1/security/service-accounts/...` (list/get SAs and key metadata) |
+| `service_accounts.manage` | `POST/DELETE /api/v1/security/service-accounts/...` (CRUD SAs and API keys) |
 | `tenants.manage_all` | Operator bypass — implicitly grants `tenants.*` on any org |
 
 ## AuthedCaller Extractor

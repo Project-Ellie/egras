@@ -23,11 +23,16 @@ pub struct User {
     pub id:            Uuid,
     pub username:      String,
     pub email:         String,      // stored as citext in DB
-    pub password_hash: String,      // Argon2id PHC format
+    pub password_hash: String,      // Argon2id PHC format ('!' sentinel for SAs)
+    pub kind:          UserKind,    // Human | ServiceAccount
     pub created_at:    DateTime<Utc>,
     pub updated_at:    DateTime<Utc>,
 }
+
+pub enum UserKind { Human, ServiceAccount }
 ```
+
+For non-human principals (`UserKind::ServiceAccount`), see [[Service-Accounts]] — they share the `users` table but live with sidecar `service_accounts` rows + per-SA `api_keys`.
 
 ### UserMembership
 

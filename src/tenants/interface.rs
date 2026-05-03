@@ -396,6 +396,14 @@ fn map_assign_role_error(e: AssignRoleError) -> AppError {
             errs.insert("user_id".into(), vec!["not_a_member".into()]);
             AppError::Validation { errors: errs }
         }
+        AssignRoleError::ServiceAccountCrossOrgForbidden => {
+            let mut errs = std::collections::HashMap::new();
+            errs.insert(
+                "user_id".into(),
+                vec!["service_account_cross_org_forbidden".into()],
+            );
+            AppError::Validation { errors: errs }
+        }
         AssignRoleError::Repo(r) => AppError::Internal(anyhow::anyhow!(r)),
         AssignRoleError::Internal(err) => AppError::Internal(err),
     }

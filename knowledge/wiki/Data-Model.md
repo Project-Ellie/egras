@@ -50,11 +50,42 @@ Defined in [`migrations/0003_security.sql`](../../migrations/0003_security.sql).
 | `id` | `uuid` PK | UUIDv7 |
 | `username` | `text` UNIQUE NOT NULL | |
 | `email` | `citext` UNIQUE NOT NULL | Case-insensitive (PostgreSQL `citext` extension) |
-| `password_hash` | `text` NOT NULL | Argon2id PHC string |
+| `password_hash` | `text` NOT NULL | Argon2id PHC string (`'!'` for SAs — never verifies) |
+| `kind` | `text` NOT NULL DEFAULT `'human'` | `'human'` or `'service_account'`; gates lifecycle (added in `0011`) |
 | `created_at` | `timestamptz` | |
 | `updated_at` | `timestamptz` | |
 
 `citext` is enabled in [`migrations/0001_extensions.sql`](../../migrations/0001_extensions.sql). It means `SELECT * FROM users WHERE email = 'Alice@Example.com'` matches `alice@example.com` transparently.
+
+### `service_accounts`
+
+Defined in [`migrations/0011_service_accounts.sql`](../../migrations/0011_service_accounts.sql). Sidecar table for non-human principals; see [[Service-Accounts]].
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `user_id` | `uuid` PK FK → `users(id)` ON DELETE CASCADE | Same id as the parent users row |
+| `organisation_id` | `uuid` FK → `organisations(id)` ON DELETE CASCADE | SA's home org |
+| `name` | `text` | Display name; `(organisation_id, name)` UNIQUE |
+| `description` | `text` | Optional |
+| `created_at` | `timestamptz` | |
+| `created_by` | `uuid` FK → `users(id)` | Human who created the SA |
+| `last_used_at` | `timestamptz` | Throttled to ≤ 1/min |
+
+### `api_keys`
+
+Defined in [`migrations/0011_service_accounts.sql`](../../migrations/0011_service_accounts.sql). Per-SA API keys.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `uuid` PK | UUIDv7 |
+| `service_account_user_id` | `uuid` FK → `service_accounts(user_id)` ON DELETE CASCADE | |
+| `prefix` | `text` UNIQUE | 8 hex chars; lookup token in the wire format |
+| `secret_hash` | `text` | Argon2id of the secret |
+| `name` | `text` | Display name |
+| `scopes` | `text[]` | NULL = inherit SA's perms; CHECK forbids empty array |
+| `created_at`, `created_by`, `last_used_at`, `revoked_at` | | |
+
+Partial index `ix_api_keys_active_by_sa ON (service_account_user_id) WHERE revoked_at IS NULL` keeps the SA-scoped active-key lookup bounded.
 
 ### `roles`
 

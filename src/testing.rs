@@ -106,6 +106,8 @@ pub struct MockAppStateBuilder {
     users: Option<Arc<dyn crate::security::persistence::UserRepository>>,
     tokens: Option<Arc<dyn crate::security::persistence::TokenRepository>>,
     inbound_channels: Option<Arc<dyn crate::tenants::persistence::InboundChannelRepository>>,
+    service_accounts: Option<Arc<dyn crate::security::persistence::ServiceAccountRepository>>,
+    api_keys: Option<Arc<dyn crate::security::persistence::ApiKeyRepository>>,
     jobs: Option<Arc<dyn crate::jobs::JobsEnqueuer>>,
     outbox: Option<Arc<dyn crate::outbox::OutboxAppender>>,
     jwt_config: Option<crate::auth::jwt::JwtConfig>,
@@ -123,6 +125,8 @@ impl MockAppStateBuilder {
             users: None,
             tokens: None,
             inbound_channels: None,
+            service_accounts: None,
+            api_keys: None,
             jobs: None,
             outbox: None,
             jwt_config: None,
@@ -222,6 +226,29 @@ impl MockAppStateBuilder {
         self
     }
 
+    pub fn with_pg_service_account_repos(mut self) -> Self {
+        self.service_accounts = Some(Arc::new(
+            crate::security::persistence::ServiceAccountRepositoryPg::new(self.pool.clone()),
+        ));
+        self.api_keys = Some(Arc::new(
+            crate::security::persistence::ApiKeyRepositoryPg::new(self.pool.clone()),
+        ));
+        self
+    }
+
+    pub fn service_accounts(
+        mut self,
+        r: Arc<dyn crate::security::persistence::ServiceAccountRepository>,
+    ) -> Self {
+        self.service_accounts = Some(r);
+        self
+    }
+
+    pub fn api_keys(mut self, r: Arc<dyn crate::security::persistence::ApiKeyRepository>) -> Self {
+        self.api_keys = Some(r);
+        self
+    }
+
     pub fn with_pg_outbox_repo(mut self) -> Self {
         self.outbox = Some(Arc::new(
             crate::outbox::persistence::OutboxRepositoryPg::new(self.pool.clone()),
@@ -243,6 +270,18 @@ impl MockAppStateBuilder {
             users: self.users.expect("users not set"),
             tokens: self.tokens.expect("tokens not set"),
             inbound_channels: self.inbound_channels.expect("inbound_channels not set"),
+            service_accounts: self.service_accounts.unwrap_or_else(|| {
+                Arc::new(
+                    crate::security::persistence::ServiceAccountRepositoryPg::new(
+                        self.pool.clone(),
+                    ),
+                )
+            }),
+            api_keys: self.api_keys.unwrap_or_else(|| {
+                Arc::new(crate::security::persistence::ApiKeyRepositoryPg::new(
+                    self.pool.clone(),
+                ))
+            }),
             jobs: self.jobs.unwrap_or_else(|| {
                 Arc::new(crate::jobs::persistence::JobsRepositoryPg::new(
                     self.pool.clone(),

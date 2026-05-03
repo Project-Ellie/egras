@@ -166,3 +166,57 @@ async fn assign_role_non_member_actor_gets_not_found() {
 
     assert!(matches!(err, AssignRoleError::NotFound));
 }
+
+#[tokio::test]
+async fn sa_in_foreign_org_returns_cross_org_forbidden() {
+    use egras::security::service::create_service_account::{
+        create_service_account, CreateServiceAccountInput,
+    };
+
+    let pool = TestPool::fresh().await.pool;
+    let actor = seed_user(&pool, "actor").await;
+    let org_a = seed_org(&pool, "acme-a", "retail").await;
+    let org_b = seed_org(&pool, "acme-b", "retail").await;
+    grant_role(&pool, actor, org_a, "org_owner").await;
+    grant_role(&pool, actor, org_b, "org_owner").await;
+
+    let state = MockAppStateBuilder::new(pool.clone())
+        .with_blocking_audit()
+        .with_pg_tenants_repos()
+        .with_pg_channels_repo()
+        .with_pg_security_repos()
+        .with_pg_service_account_repos()
+        .build();
+
+    let sa = create_service_account(
+        &state,
+        CreateServiceAccountInput {
+            organisation_id: org_a,
+            name: "bot".into(),
+            description: None,
+            actor_user_id: actor,
+            actor_org_id: org_a,
+        },
+    )
+    .await
+    .unwrap();
+
+    let err = assign_role(
+        &state,
+        actor,
+        org_b,
+        /* is_operator = */ false,
+        AssignRoleInput {
+            organisation_id: org_b,
+            target_user_id: sa.user_id,
+            role_code: "org_member".into(),
+        },
+    )
+    .await
+    .unwrap_err();
+
+    assert!(matches!(
+        err,
+        AssignRoleError::ServiceAccountCrossOrgForbidden
+    ));
+}

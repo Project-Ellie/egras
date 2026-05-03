@@ -74,6 +74,11 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
     );
     let inbound_channels: Arc<dyn crate::tenants::persistence::InboundChannelRepository> =
         Arc::new(crate::tenants::persistence::InboundChannelRepositoryPg::new(pool.clone()));
+    let service_accounts: Arc<dyn crate::security::persistence::ServiceAccountRepository> =
+        Arc::new(crate::security::persistence::ServiceAccountRepositoryPg::new(pool.clone()));
+    let api_keys: Arc<dyn crate::security::persistence::ApiKeyRepository> = Arc::new(
+        crate::security::persistence::ApiKeyRepositoryPg::new(pool.clone()),
+    );
 
     let jobs_pg = Arc::new(JobsRepositoryPg::new(pool.clone()));
     let jobs_repo: Arc<dyn JobsRepository> = jobs_pg.clone();
@@ -99,6 +104,8 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
         inbound_channels,
         users,
         tokens,
+        service_accounts,
+        api_keys,
         jobs: jobs_enqueuer,
         outbox: outbox_appender,
         jwt_config: crate::auth::jwt::JwtConfig {
@@ -129,11 +136,16 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
         );
 
     // 3. Protected routes
+    let api_key_verifier = crate::auth::middleware::ApiKeyVerifier::pg(
+        state.api_keys.clone(),
+        state.service_accounts.clone(),
+    );
     let auth_layer = AuthLayer::new(
         cfg.jwt_secret.clone(),
         cfg.jwt_issuer.clone(),
         PermissionLoader::pg(pool.clone()),
         RevocationChecker::pg(pool.clone()),
+        api_key_verifier,
     );
     let protected: Router<AppState> = Router::new()
         .nest("/api/v1/tenants", crate::tenants::interface::router())

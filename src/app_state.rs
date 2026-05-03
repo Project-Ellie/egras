@@ -4,7 +4,9 @@ use crate::audit::service::{AuditRecorder, ListAuditEvents};
 use crate::auth::jwt::JwtConfig;
 use crate::jobs::JobsEnqueuer;
 use crate::outbox::OutboxAppender;
-use crate::security::persistence::{TokenRepository, UserRepository};
+use crate::security::persistence::{
+    ApiKeyRepository, ServiceAccountRepository, TokenRepository, UserRepository,
+};
 use crate::tenants::persistence::{
     InboundChannelRepository, OrganisationRepository, RoleRepository,
 };
@@ -18,6 +20,8 @@ pub struct AppState {
     pub inbound_channels: Arc<dyn InboundChannelRepository>,
     pub users: Arc<dyn UserRepository>,
     pub tokens: Arc<dyn TokenRepository>,
+    pub service_accounts: Arc<dyn ServiceAccountRepository>,
+    pub api_keys: Arc<dyn ApiKeyRepository>,
     pub jobs: Arc<dyn JobsEnqueuer>,
     pub outbox: Arc<dyn OutboxAppender>,
     pub jwt_config: JwtConfig,

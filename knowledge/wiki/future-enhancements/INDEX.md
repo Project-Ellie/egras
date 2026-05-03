@@ -17,7 +17,7 @@ Goal: Wolfgang picks what matters; we then promote selected notes into specs und
 - [[SSO-OIDC-SAML]] — federated login for enterprise customers
 - [[MFA]] — TOTP + WebAuthn second factor
 - [[SCIM-Provisioning]] — IdP-driven user lifecycle
-- [[Service-Accounts-and-API-Keys]] — non-human principals
+- ~~Service-Accounts-and-API-Keys~~ — **shipped**, see [[Service-Accounts]]
 - [[Session-Management-UI]] — list/revoke active sessions
 - [[Password-Policy-and-Breach-Check]] — strength rules + HIBP
 - [[Policy-Engine-UI]] — role/permission/ABAC editor (the one you named)

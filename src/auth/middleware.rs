@@ -15,7 +15,8 @@ use sqlx::PgPool;
 use tower::{Layer, Service};
 use uuid::Uuid;
 
-use crate::auth::jwt::decode_access_token;
+use crate::auth::extractors::Caller;
+use crate::auth::jwt::{decode_access_token, Claims};
 use crate::auth::permissions::PermissionSet;
 use crate::errors::AppError;
 
@@ -142,12 +143,63 @@ impl RevocationStrategy for NoRevocationChecker {
     }
 }
 
+/// Result of an API-key Bearer verification: prefix lookup hit + secret
+/// matched the stored argon2 hash.
+#[derive(Debug, Clone)]
+pub struct VerifiedKey {
+    pub key_id: Uuid,
+    pub sa_user_id: Uuid,
+    pub organisation_id: Uuid,
+    pub scopes: Option<Vec<String>>,
+}
+
+/// Strategy for verifying an `egras_*` Bearer credential.
+///
+/// Implementations look the prefix up in `api_keys`, verify the secret with
+/// constant-time hash comparison, and return the SA's identity + per-key
+/// scope list. `None` means either unknown prefix or bad secret — same 401.
+#[async_trait]
+pub trait ApiKeyVerifierStrategy: Send + Sync + 'static {
+    async fn verify(&self, prefix: &str, secret: &str) -> anyhow::Result<Option<VerifiedKey>>;
+    /// Best-effort: update `last_used_at` on the key + its SA, throttled to 60 s.
+    /// Errors are logged but not propagated.
+    async fn touch_last_used(&self, key_id: Uuid, sa_user_id: Uuid);
+}
+
+#[derive(Clone)]
+pub struct ApiKeyVerifier(Arc<dyn ApiKeyVerifierStrategy>);
+
+impl ApiKeyVerifier {
+    pub fn new<T: ApiKeyVerifierStrategy>(inner: T) -> Self {
+        Self(Arc::new(inner))
+    }
+    pub async fn verify(&self, prefix: &str, secret: &str) -> anyhow::Result<Option<VerifiedKey>> {
+        self.0.verify(prefix, secret).await
+    }
+    pub async fn touch_last_used(&self, key_id: Uuid, sa_user_id: Uuid) {
+        self.0.touch_last_used(key_id, sa_user_id).await;
+    }
+}
+
+/// No-op verifier that always returns `None`. Useful in tests that don't
+/// exercise the API-key path.
+pub struct NoApiKeyVerifier;
+
+#[async_trait]
+impl ApiKeyVerifierStrategy for NoApiKeyVerifier {
+    async fn verify(&self, _prefix: &str, _secret: &str) -> anyhow::Result<Option<VerifiedKey>> {
+        Ok(None)
+    }
+    async fn touch_last_used(&self, _key_id: Uuid, _sa_user_id: Uuid) {}
+}
+
 #[derive(Clone)]
 pub struct AuthLayer {
     secret: Arc<String>,
     issuer: Arc<String>,
     loader: PermissionLoader,
     revocation: RevocationChecker,
+    api_keys: ApiKeyVerifier,
 }
 
 impl AuthLayer {
@@ -156,12 +208,14 @@ impl AuthLayer {
         issuer: String,
         loader: PermissionLoader,
         revocation: RevocationChecker,
+        api_keys: ApiKeyVerifier,
     ) -> Self {
         Self {
             secret: Arc::new(secret),
             issuer: Arc::new(issuer),
             loader,
             revocation,
+            api_keys,
         }
     }
 }
@@ -175,6 +229,7 @@ impl<S> Layer<S> for AuthLayer {
             issuer: self.issuer.clone(),
             loader: self.loader.clone(),
             revocation: self.revocation.clone(),
+            api_keys: self.api_keys.clone(),
         }
     }
 }
@@ -186,6 +241,7 @@ pub struct AuthService<S> {
     issuer: Arc<String>,
     loader: PermissionLoader,
     revocation: RevocationChecker,
+    api_keys: ApiKeyVerifier,
 }
 
 impl<S> Service<Request<Body>> for AuthService<S>
@@ -208,6 +264,7 @@ where
         let issuer = self.issuer.clone();
         let loader = self.loader.clone();
         let revocation = self.revocation.clone();
+        let api_keys = self.api_keys.clone();
 
         Box::pin(async move {
             // Extract bearer token
@@ -225,7 +282,78 @@ where
                 }
             };
 
-            // Decode
+            // API-key path: prefix sniff
+            if let Some(parsed) = crate::security::service::api_key_secret::parse(&token) {
+                let verified = match api_keys.verify(parsed.prefix, parsed.secret).await {
+                    Ok(Some(v)) => v,
+                    Ok(None) => {
+                        return Ok(AppError::Unauthenticated {
+                            reason: "invalid_api_key".into(),
+                        }
+                        .into_response());
+                    }
+                    Err(err) => {
+                        tracing::error!(error = %err, "api key verifier failed");
+                        return Ok(
+                            (StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response()
+                        );
+                    }
+                };
+
+                let codes = match loader
+                    .load(verified.sa_user_id, verified.organisation_id)
+                    .await
+                {
+                    Ok(c) => c,
+                    Err(err) => {
+                        tracing::error!(error = %err, "permission loader failed (api key path)");
+                        return Ok(
+                            (StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response()
+                        );
+                    }
+                };
+                let mut perms = PermissionSet::from_codes(codes);
+                if let Some(scopes) = verified.scopes.as_ref() {
+                    perms = perms.intersect(scopes);
+                }
+
+                // Best-effort throttled last_used touch — fire-and-forget.
+                let api_keys2 = api_keys.clone();
+                let key_id_for_touch = verified.key_id;
+                let sa_for_touch = verified.sa_user_id;
+                tokio::spawn(async move {
+                    api_keys2
+                        .touch_last_used(key_id_for_touch, sa_for_touch)
+                        .await;
+                });
+
+                // Synthesised Claims for downstream handlers using the existing
+                // AuthedCaller / Perm<P> extractors. jti is deterministic from
+                // the api_key.id; exp far in the future (never re-validated post-
+                // middleware on the api-key path).
+                let now = chrono::Utc::now().timestamp();
+                let synth_jti = Uuid::from_u128(verified.key_id.as_u128() ^ 0xA1A1_A1A1_u128);
+                let claims = Claims {
+                    sub: verified.sa_user_id,
+                    org: verified.organisation_id,
+                    iat: now,
+                    exp: now + 365 * 24 * 3600,
+                    jti: synth_jti,
+                    iss: (*issuer).clone(),
+                    typ: "access".to_string(),
+                };
+
+                req.extensions_mut().insert(claims);
+                req.extensions_mut().insert(perms);
+                req.extensions_mut().insert(Caller::ApiKey {
+                    key_id: verified.key_id,
+                    sa_user_id: verified.sa_user_id,
+                    org_id: verified.organisation_id,
+                });
+                return inner.call(req).await;
+            }
+
+            // JWT path
             let claims = match decode_access_token(&secret, &issuer, &token) {
                 Ok(c) => c,
                 Err(_) => {
@@ -236,7 +364,6 @@ where
                 }
             };
 
-            // Check revocation
             match revocation.is_revoked(claims.jti).await {
                 Ok(true) => {
                     return Ok(AppError::Unauthenticated {
@@ -253,7 +380,6 @@ where
                 }
             }
 
-            // Load permissions
             let codes = match loader.load(claims.sub, claims.org).await {
                 Ok(c) => c,
                 Err(err) => {
@@ -264,9 +390,15 @@ where
                 }
             };
             let perms = PermissionSet::from_codes(codes);
+            let caller = Caller::User {
+                user_id: claims.sub,
+                org_id: claims.org,
+                jti: claims.jti,
+            };
 
             req.extensions_mut().insert(claims);
             req.extensions_mut().insert(perms);
+            req.extensions_mut().insert(caller);
 
             inner.call(req).await
         })
