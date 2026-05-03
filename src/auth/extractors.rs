@@ -230,3 +230,23 @@ impl Permission for ChannelsManage {
         set.has(Self::CODE) || set.is_operator_over_tenants()
     }
 }
+
+/// Permission marker: `service_accounts.read`.
+/// Accepts either the direct permission OR `tenants.manage_all` operator bypass.
+pub struct ServiceAccountsRead;
+impl Permission for ServiceAccountsRead {
+    const CODE: &'static str = "service_accounts.read";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has(Self::CODE) || set.has("service_accounts.manage") || set.is_operator_over_tenants()
+    }
+}
+
+/// Permission marker: `service_accounts.manage`.
+/// Accepts either the direct permission OR `tenants.manage_all` operator bypass.
+pub struct ServiceAccountsManage;
+impl Permission for ServiceAccountsManage {
+    const CODE: &'static str = "service_accounts.manage";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has(Self::CODE) || set.is_operator_over_tenants()
+    }
+}

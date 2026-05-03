@@ -39,10 +39,13 @@ Encoding and decoding live in [`src/auth/jwt.rs`](../../src/auth/jwt.rs).
 [`src/auth/middleware.rs`](../../src/auth/middleware.rs) contains `AuthLayer`, a tower `Layer` applied to all protected routes. On every request it:
 
 1. Extracts the `Authorization: Bearer <token>` header
-2. Decodes and validates the JWT (algorithm, issuer, expiry, typ)
-3. Calls `RevocationChecker::is_revoked(jti)` — rejects with 401 if found
-4. Calls `PermissionLoader::load(user_id, org_id)` — loads permissions from DB
-5. Inserts `Claims` and `PermissionSet` into request extensions
+2. **Sniffs the prefix.** Tokens starting with `egras_` go to the API-key path (see [[Service-Accounts]]); everything else goes to the JWT path described below.
+3. Decodes and validates the JWT (algorithm, issuer, expiry, typ)
+4. Calls `RevocationChecker::is_revoked(jti)` — rejects with 401 if found
+5. Calls `PermissionLoader::load(user_id, org_id)` — loads permissions from DB
+6. Inserts `Claims`, `PermissionSet`, and `Caller::User { user_id, org_id, jti }` into request extensions
+
+For the API-key path, the same `Claims` + `PermissionSet` shape is produced (Claims is **synthesised** for compatibility with the existing extractors), plus `Caller::ApiKey { key_id, sa_user_id, org_id }`. The per-key `scopes` are intersected with the SA's loaded permissions before insertion. Revocation lives at `api_keys.revoked_at` and is enforced inside `ApiKeyVerifier::verify`. See [[Service-Accounts]] for the full API-key auth path.
 
 If any step fails the request is rejected before the handler is called:
 

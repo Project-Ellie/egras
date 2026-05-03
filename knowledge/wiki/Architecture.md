@@ -55,6 +55,7 @@ These live directly in `src/` and are shared across all domains:
 | [`src/lib.rs`](../../src/lib.rs)               | `build_app()` — assembles the full Axum router          |
 | [`src/jobs/`](../../src/jobs/)                 | Durable background-job queue + runner — see [[Jobs]]    |
 | [`src/outbox/`](../../src/outbox/)             | Transaction-coupled event outbox + relayer — see [[Outbox]] |
+| `src/security/service/{create,list,delete}_service_account.rs` and `*_api_key.rs` | Service accounts (non-human principals) + per-key API keys — see [[Service-Accounts]] |
 | [`src/openapi.rs`](../../src/openapi.rs)       | OpenAPI 3.1 schema via utoipa                           |
 
 ## Dependency Injection via `AppState`
