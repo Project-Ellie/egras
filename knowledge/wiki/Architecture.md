@@ -54,6 +54,7 @@ These live directly in `src/` and are shared across all domains:
 | [`src/db.rs`](../../src/db.rs)                 | Pool construction, migration runner                     |
 | [`src/lib.rs`](../../src/lib.rs)               | `build_app()` — assembles the full Axum router          |
 | [`src/jobs/`](../../src/jobs/)                 | Durable background-job queue + runner — see [[Jobs]]    |
+| [`src/outbox/`](../../src/outbox/)             | Transaction-coupled event outbox + relayer — see [[Outbox]] |
 | [`src/openapi.rs`](../../src/openapi.rs)       | OpenAPI 3.1 schema via utoipa                           |
 
 ## Dependency Injection via `AppState`
@@ -180,6 +181,13 @@ src/
 │       ├─ organisation_repository_pg.rs
 │       ├─ role_repository.rs
 │       └─ role_repository_pg.rs
+│
+├─ outbox/
+│   ├─ model.rs               OutboxEvent, AppendRequest
+│   ├─ relayer.rs             OutboxAppender, OutboxRelayer, OutboxRelayerConfig
+│   └─ persistence/
+│       ├─ mod.rs                  OutboxRepository trait
+│       └─ outbox_repository_pg.rs sqlx impl
 │
 └─ audit/
     ├─ model.rs               AuditEvent, AuditCategory, Outcome, constructors

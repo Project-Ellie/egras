@@ -45,7 +45,7 @@ Goal: Wolfgang picks what matters; we then promote selected notes into specs und
 
 ### Operations & Reliability
 - ~~Background-Jobs~~ — **shipped**, see [[Jobs]]
-- [[Outbox-Pattern]] — reliable domain-event publishing
+- ~~Outbox-Pattern~~ — **shipped**, see [[Outbox]]
 - [[Distributed-Tracing]] — OpenTelemetry end-to-end
 - [[Metrics-and-SLOs]] — Prometheus + golden signals
 - [[Error-Deduplication-and-Alerting]] — fingerprinted errors, one alert per incident not thousands

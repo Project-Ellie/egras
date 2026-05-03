@@ -13,6 +13,14 @@ pub use jobs_repository_pg::JobsRepositoryPg;
 pub trait JobsRepository: Send + Sync + 'static {
     async fn enqueue(&self, req: EnqueueRequest) -> anyhow::Result<Uuid>;
 
+    /// Enqueue inside an existing transaction. Used by the outbox relayer
+    /// to atomically mark events relayed and enqueue their jobs.
+    async fn enqueue_in_tx(
+        &self,
+        tx: &mut sqlx::PgConnection,
+        req: EnqueueRequest,
+    ) -> anyhow::Result<Uuid>;
+
     /// Atomically claim up to `limit` due jobs of any of the given `kinds`,
     /// transitioning them to `running` with `locked_until = now + visibility`
     /// and `locked_by = worker_id`.

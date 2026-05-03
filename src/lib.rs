@@ -6,6 +6,7 @@ pub mod db;
 pub mod errors;
 pub mod jobs;
 pub mod openapi;
+pub mod outbox;
 pub mod pagination;
 pub mod security;
 pub mod tenants;
@@ -31,11 +32,14 @@ use crate::auth::middleware::{AuthLayer, PermissionLoader, RevocationChecker};
 use crate::config::AppConfig;
 use crate::jobs::persistence::{JobsRepository, JobsRepositoryPg};
 use crate::jobs::{JobRunner, JobRunnerConfig, JobRunnerHandle, JobsEnqueuer};
+use crate::outbox::persistence::{OutboxRepository, OutboxRepositoryPg};
+use crate::outbox::{OutboxAppender, OutboxRelayer, OutboxRelayerConfig, OutboxRelayerHandle};
 
 pub struct AppHandles {
     pub router: Router,
     pub audit: AuditWorkerHandle,
     pub jobs: JobRunnerHandle,
+    pub outbox: OutboxRelayerHandle,
 }
 
 pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandles> {
@@ -74,7 +78,18 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
     let jobs_pg = Arc::new(JobsRepositoryPg::new(pool.clone()));
     let jobs_repo: Arc<dyn JobsRepository> = jobs_pg.clone();
     let jobs_enqueuer: Arc<dyn JobsEnqueuer> = jobs_pg;
-    let jobs_handle = JobRunner::new(jobs_repo, JobRunnerConfig::default()).spawn();
+    let jobs_handle = JobRunner::new(jobs_repo.clone(), JobRunnerConfig::default()).spawn();
+
+    let outbox_pg = Arc::new(OutboxRepositoryPg::new(pool.clone()));
+    let outbox_repo: Arc<dyn OutboxRepository> = outbox_pg.clone();
+    let outbox_appender: Arc<dyn OutboxAppender> = outbox_pg;
+    let outbox_handle = OutboxRelayer::new(
+        pool.clone(),
+        outbox_repo,
+        jobs_repo,
+        OutboxRelayerConfig::default(),
+    )
+    .spawn();
 
     let state = AppState {
         audit_recorder,
@@ -85,6 +100,7 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
         users,
         tokens,
         jobs: jobs_enqueuer,
+        outbox: outbox_appender,
         jwt_config: crate::auth::jwt::JwtConfig {
             secret: cfg.jwt_secret.clone(),
             issuer: cfg.jwt_issuer.clone(),
@@ -143,6 +159,7 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
         router,
         audit: audit_handle,
         jobs: jobs_handle,
+        outbox: outbox_handle,
     })
 }
 
