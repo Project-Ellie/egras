@@ -166,6 +166,10 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
             "/api/v1/users",
             axum::routing::get(crate::security::interface::get_list_users),
         )
+        .nest(
+            "/api/v1/features",
+            crate::features::interface::protected_router(),
+        )
         .layer(auth_layer);
 
     // 4. Compose

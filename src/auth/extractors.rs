@@ -251,6 +251,12 @@ impl Permission for ServiceAccountsManage {
     }
 }
 
+/// Permission marker: `tenants.manage_all` (operator-only catalog access).
+pub struct TenantsManageAll;
+impl Permission for TenantsManageAll {
+    const CODE: &'static str = "tenants.manage_all";
+}
+
 /// Permission marker: `features.read`.
 /// Accepts either the direct permission OR `tenants.manage_all` operator bypass.
 pub struct FeaturesRead;

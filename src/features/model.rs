@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FeatureValueType {
     Bool,
@@ -51,7 +52,7 @@ impl FeatureValueType {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct FeatureDefinition {
     pub slug: String,
     pub value_type: FeatureValueType,
@@ -70,7 +71,7 @@ pub struct OrgFeatureOverride {
 }
 
 /// Effective value for an (org, slug) pair, with provenance for UI/audit.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct EvaluatedFeature {
     pub slug: String,
     pub value: Value,
@@ -79,7 +80,7 @@ pub struct EvaluatedFeature {
     pub self_service: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FeatureSource {
     Default,

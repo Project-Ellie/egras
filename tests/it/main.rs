@@ -15,6 +15,7 @@ mod bootstrap_seed_admin_test;
 mod config_test;
 mod e2e_seed_admin_login_test;
 mod errors_test;
+mod features_http_test;
 mod features_persistence_test;
 mod features_service_evaluate_test;
 mod features_service_list_test;
