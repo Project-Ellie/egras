@@ -72,11 +72,27 @@ def create_service_account(client: Client, org_id: str, name: str) -> dict:
     return r.json()
 
 
+def add_user_to_org(client: Client, org_id: str, user_id: str, role_code: str) -> None:
+    """POST /api/v1/tenants/add-user-to-organisation.
+
+    Creates the membership row for user_id in org_id with role_code. Use this
+    to grant a freshly-created service account membership in its org (SAs are
+    created as users without any membership; this step makes them members).
+
+    Body: { user_id, org_id, role_code }. Returns 204.
+    """
+    r = client.post(
+        "/api/v1/tenants/add-user-to-organisation",
+        json={"user_id": user_id, "org_id": org_id, "role_code": role_code},
+    )
+    r.raise_for_status()
+
+
 def assign_role(client: Client, org_id: str, user_id: str, role_code: str) -> None:
     """POST /api/v1/tenants/organisations/{org_id}/memberships.
 
-    Assigns role_code to user_id in org_id. Used to give a service account
-    the org_admin role (which carries echo:invoke after migration 0014).
+    Updates the role of an EXISTING member. The user must already be a member
+    of the org (use add_user_to_org first for fresh service accounts).
 
     Body: { user_id, role_code }. Returns 200 { assigned: bool }.
     """
