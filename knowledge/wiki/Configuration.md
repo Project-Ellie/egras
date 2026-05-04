@@ -116,3 +116,5 @@ EGRAS_LOG_LEVEL=debug
 - [[CI-and-Deployment]] — how config is supplied in Docker Compose and GitHub Actions
 - [[Architecture]] — how `AppConfig` flows into `build_app()`
 - [[Audit-System]] — the audit channel config vars
+
+**See also:** [[Feature-Flags]] — per-org runtime overrides that complement env-var-driven configuration. Configuration sets defaults at process boundaries; feature flags allow per-tenant runtime adjustments.

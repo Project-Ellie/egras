@@ -24,7 +24,7 @@ audit/     │  handlers   list_evts   AuditEvent AuditRepositoryPg
 
 | Domain | Responsibility |
 |--------|---------------|
-| `features/` | Org-level feature flags — definitions, overrides, evaluation |
+| `features/` | Org-level feature flags — definitions, overrides, evaluation · See [[Feature-Flags]] |
 | `security/` | Users, authentication, password management |
 | `tenants/` | Organisations, memberships, role assignment |
 | `audit/` | Immutable event log — writing and reading |
