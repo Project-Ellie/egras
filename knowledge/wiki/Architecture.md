@@ -188,7 +188,11 @@ src/
 │   ├─ mod.rs
 │   ├─ model.rs               FeatureDefinition, OrgFeatureOverride, EvaluatedFeature, FeatureValueType, FeatureSource
 │   ├─ service/
-│   │   └─ evaluate.rs        FeatureEvaluator trait + PgFeatureEvaluator (TTL cache, invalidate/invalidate_all)
+│   │   ├─ evaluate.rs        FeatureEvaluator trait + PgFeatureEvaluator (TTL cache, invalidate/invalidate_all)
+│   │   ├─ list_definitions.rs    list_definitions(repo) → Vec<FeatureDefinition>
+│   │   ├─ list_org_features.rs   list_org_features(repo, evaluator, org) → Vec<EvaluatedFeature> (source=default|override)
+│   │   ├─ set_org_feature.rs     set_org_feature(repo, evaluator, audit, input) — validate type, self_service guard, upsert, invalidate, audit feature.set
+│   │   └─ clear_org_feature.rs   clear_org_feature(repo, evaluator, audit, input) — self_service guard, delete, invalidate, audit feature.cleared
 │   └─ persistence/
 │       ├─ feature_repository.rs    FeatureRepository trait + FeatureRepoError
 │       └─ feature_repository_pg.rs FeaturePgRepository — sqlx impl (upsert CTE, FK→UnknownSlug)
@@ -201,7 +205,7 @@ src/
 │       └─ outbox_repository_pg.rs sqlx impl
 │
 └─ audit/
-    ├─ model.rs               AuditEvent, AuditCategory, Outcome, constructors
+    ├─ model.rs               AuditEvent, AuditCategory, Outcome, constructors (incl. feature.set, feature.cleared)
     ├─ worker.rs              AuditWorker — drains mpsc, retries DB writes
     ├─ service/
     │   ├─ record_event.rs    AuditRecorder trait + ChannelAuditRecorder
