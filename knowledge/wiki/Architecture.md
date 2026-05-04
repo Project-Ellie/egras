@@ -187,6 +187,8 @@ src/
 ├─ features/
 │   ├─ mod.rs
 │   ├─ model.rs               FeatureDefinition, OrgFeatureOverride, EvaluatedFeature, FeatureValueType, FeatureSource
+│   ├─ service/
+│   │   └─ evaluate.rs        FeatureEvaluator trait + PgFeatureEvaluator (TTL cache, invalidate/invalidate_all)
 │   └─ persistence/
 │       ├─ feature_repository.rs    FeatureRepository trait + FeatureRepoError
 │       └─ feature_repository_pg.rs FeaturePgRepository — sqlx impl (upsert CTE, FK→UnknownSlug)

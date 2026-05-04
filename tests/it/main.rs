@@ -16,6 +16,7 @@ mod config_test;
 mod e2e_seed_admin_login_test;
 mod errors_test;
 mod features_persistence_test;
+mod features_service_evaluate_test;
 mod health_test;
 mod jobs_persistence_test;
 mod jobs_runner_test;
