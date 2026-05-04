@@ -505,6 +505,7 @@ impl AuditEvent {
         e.actor_organisation_id = Some(actor_org);
         e.target_type = Some("feature".into());
         e.target_organisation_id = Some(org_id);
+        // target_id intentionally None — features are keyed by slug (carried in payload), no UUID PK.
         e.payload = json!({
             "slug": slug,
             "old_value": old_value,
@@ -531,6 +532,7 @@ impl AuditEvent {
         e.actor_organisation_id = Some(actor_org);
         e.target_type = Some("feature".into());
         e.target_organisation_id = Some(org_id);
+        // target_id intentionally None — features are keyed by slug (carried in payload), no UUID PK.
         e.payload = json!({
             "slug": slug,
             "old_value": old_value,

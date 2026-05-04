@@ -116,6 +116,19 @@ async fn non_operator_set_non_self_service_flag_returns_error() {
         matches!(err, SetOrgFeatureError::NotSelfService),
         "expected NotSelfService, got: {err:?}"
     );
+
+    // No override persisted.
+    let stored = repo.get_override(org, SLUG).await.unwrap();
+    assert!(
+        stored.is_none(),
+        "no override should be written when the guard rejects"
+    );
+    // No audit event emitted.
+    let captured = audit.captured.lock().await;
+    assert!(
+        captured.is_empty(),
+        "no audit event should be emitted on rejection"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -153,6 +166,19 @@ async fn type_mismatch_returns_invalid_value() {
         matches!(err, SetOrgFeatureError::InvalidValue(_)),
         "expected InvalidValue, got: {err:?}"
     );
+
+    // No override persisted.
+    let stored = repo.get_override(org, SLUG).await.unwrap();
+    assert!(
+        stored.is_none(),
+        "no override should be written when the guard rejects"
+    );
+    // No audit event emitted.
+    let captured = audit.captured.lock().await;
+    assert!(
+        captured.is_empty(),
+        "no audit event should be emitted on rejection"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -188,6 +214,19 @@ async fn unknown_slug_returns_error() {
     assert!(
         matches!(err, SetOrgFeatureError::UnknownSlug),
         "expected UnknownSlug, got: {err:?}"
+    );
+
+    // No override persisted (reading unknown slug returns None regardless).
+    let stored = repo.get_override(org, UNKNOWN_SLUG).await.unwrap();
+    assert!(
+        stored.is_none(),
+        "no override should be written when the guard rejects"
+    );
+    // No audit event emitted.
+    let captured = audit.captured.lock().await;
+    assert!(
+        captured.is_empty(),
+        "no audit event should be emitted on rejection"
     );
 }
 
@@ -292,5 +331,68 @@ async fn non_operator_clear_non_self_service_flag_returns_error() {
     assert!(
         matches!(err, ClearOrgFeatureError::NotSelfService),
         "expected NotSelfService, got: {err:?}"
+    );
+
+    // Override must remain when clear is rejected (nothing should be written/deleted).
+    let stored = repo.get_override(org, SLUG).await.unwrap();
+    assert!(
+        stored.is_none(),
+        "no override exists since it was never set in this test"
+    );
+    // No audit event for clear should be emitted on rejection.
+    let captured = audit.captured.lock().await;
+    let clear_events: Vec<_> = captured
+        .iter()
+        .filter(|e| e.event_type == "feature.cleared")
+        .collect();
+    assert!(
+        clear_events.is_empty(),
+        "no audit event should be emitted on rejection"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 7. clear_org_feature with unknown slug → UnknownSlug
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn clear_unknown_slug_returns_error() {
+    let pool = TestPool::fresh().await.pool;
+    let actor = seed_user(&pool, "op-admin-5").await;
+    let org = seed_org(&pool, "tenant-7", "retail").await;
+
+    let repo = Arc::new(FeaturePgRepository::new(pool.clone()));
+    let audit = make_blocking_audit(&pool);
+    let evaluator = make_evaluator(repo.clone());
+
+    let err = clear_org_feature(
+        repo.as_ref(),
+        &evaluator,
+        audit.as_ref() as &dyn AuditRecorder,
+        ClearOrgFeatureInput {
+            organisation_id: org,
+            slug: UNKNOWN_SLUG.into(),
+            actor_user_id: actor,
+            actor_org_id: OPERATOR_ORG_ID,
+            actor_is_operator: true,
+        },
+    )
+    .await
+    .unwrap_err();
+
+    assert!(
+        matches!(err, ClearOrgFeatureError::UnknownSlug),
+        "expected UnknownSlug, got: {err:?}"
+    );
+
+    // No override exists for unknown slug (would return None anyway).
+    let stored = repo.get_override(org, UNKNOWN_SLUG).await.unwrap();
+    assert!(stored.is_none(), "unknown slug should have no override");
+
+    // No audit event emitted (guard fires before audit).
+    let captured = audit.captured.lock().await;
+    assert!(
+        captured.is_empty(),
+        "no audit event should be emitted on rejection"
     );
 }
