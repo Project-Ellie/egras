@@ -24,6 +24,7 @@ audit/     │  handlers   list_evts   AuditEvent AuditRepositoryPg
 
 | Domain | Responsibility |
 |--------|---------------|
+| `features/` | Org-level feature flags — definitions, overrides, evaluation |
 | `security/` | Users, authentication, password management |
 | `tenants/` | Organisations, memberships, role assignment |
 | `audit/` | Immutable event log — writing and reading |
@@ -182,6 +183,10 @@ src/
 │       ├─ organisation_repository_pg.rs
 │       ├─ role_repository.rs
 │       └─ role_repository_pg.rs
+│
+├─ features/
+│   ├─ mod.rs
+│   └─ model.rs               FeatureDefinition, OrgFeatureOverride, EvaluatedFeature, FeatureValueType, FeatureSource
 │
 ├─ outbox/
 │   ├─ model.rs               OutboxEvent, AppendRequest

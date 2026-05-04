@@ -4,6 +4,7 @@ pub mod auth;
 pub mod config;
 pub mod db;
 pub mod errors;
+pub mod features;
 pub mod jobs;
 pub mod openapi;
 pub mod outbox;
