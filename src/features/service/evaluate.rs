@@ -58,6 +58,7 @@ impl PgFeatureEvaluator {
     }
 
     /// Override TTL (useful in tests to verify cache expiry behaviour).
+    #[cfg(any(test, feature = "testing"))]
     pub fn with_ttl(repo: Arc<dyn FeatureRepository>, ttl: Duration) -> Self {
         Self {
             repo,
