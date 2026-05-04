@@ -54,7 +54,11 @@ pub struct PgFeatureEvaluator {
 impl PgFeatureEvaluator {
     /// Default TTL of 60 seconds.
     pub fn new(repo: Arc<dyn FeatureRepository>) -> Self {
-        Self::with_ttl(repo, Duration::from_secs(60))
+        Self {
+            repo,
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            ttl: Duration::from_secs(60),
+        }
     }
 
     /// Override TTL (useful in tests to verify cache expiry behaviour).
