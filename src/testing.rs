@@ -106,6 +106,8 @@ pub struct MockAppStateBuilder {
     users: Option<Arc<dyn crate::security::persistence::UserRepository>>,
     tokens: Option<Arc<dyn crate::security::persistence::TokenRepository>>,
     inbound_channels: Option<Arc<dyn crate::tenants::persistence::InboundChannelRepository>>,
+    features: Option<Arc<dyn crate::features::persistence::FeatureRepository>>,
+    feature_evaluator: Option<Arc<dyn crate::features::FeatureEvaluator>>,
     service_accounts: Option<Arc<dyn crate::security::persistence::ServiceAccountRepository>>,
     api_keys: Option<Arc<dyn crate::security::persistence::ApiKeyRepository>>,
     jobs: Option<Arc<dyn crate::jobs::JobsEnqueuer>>,
@@ -125,6 +127,8 @@ impl MockAppStateBuilder {
             users: None,
             tokens: None,
             inbound_channels: None,
+            features: None,
+            feature_evaluator: None,
             service_accounts: None,
             api_keys: None,
             jobs: None,
@@ -262,6 +266,16 @@ impl MockAppStateBuilder {
     }
 
     pub fn build(self) -> AppState {
+        let features: Arc<dyn crate::features::persistence::FeatureRepository> =
+            self.features.unwrap_or_else(|| {
+                Arc::new(crate::features::persistence::FeaturePgRepository::new(
+                    self.pool.clone(),
+                ))
+            });
+        let feature_evaluator: Arc<dyn crate::features::FeatureEvaluator> =
+            self.feature_evaluator.unwrap_or_else(|| {
+                Arc::new(crate::features::PgFeatureEvaluator::new(features.clone()))
+            });
         AppState {
             audit_recorder: self.audit_recorder.expect("audit_recorder not set"),
             list_audit_events: self.list_audit_events.expect("list_audit_events not set"),
@@ -270,6 +284,8 @@ impl MockAppStateBuilder {
             users: self.users.expect("users not set"),
             tokens: self.tokens.expect("tokens not set"),
             inbound_channels: self.inbound_channels.expect("inbound_channels not set"),
+            features,
+            feature_evaluator,
             service_accounts: self.service_accounts.unwrap_or_else(|| {
                 Arc::new(
                     crate::security::persistence::ServiceAccountRepositoryPg::new(
