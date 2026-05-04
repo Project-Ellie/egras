@@ -201,3 +201,20 @@ async fn upsert_unknown_slug_returns_unknown_slug_error() {
         "expected UnknownSlug, got: {err}"
     );
 }
+
+#[tokio::test]
+async fn upsert_with_unknown_org_does_not_misclassify_as_unknown_slug() {
+    let pool = TestPool::fresh().await.pool;
+    let user = seed_user(&pool, "feat-test-user-8").await;
+    let repo = FeaturePgRepository::new(pool);
+    let bogus_org = uuid::Uuid::new_v4();
+
+    let err = repo
+        .upsert_override(bogus_org, SEEDED_SLUG, json!(["x-api-key"]), user)
+        .await
+        .unwrap_err();
+    match err {
+        FeatureRepoError::Other(_) => {}
+        FeatureRepoError::UnknownSlug => panic!("FK on org must not be classified as UnknownSlug"),
+    }
+}

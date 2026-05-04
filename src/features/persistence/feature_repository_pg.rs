@@ -21,9 +21,14 @@ impl FeaturePgRepository {
 // ---------------------------------------------------------------------------
 
 /// Maps a sqlx error, translating FK violation on `slug` → `UnknownSlug`.
+/// Only the slug FK constraint maps to UnknownSlug; other FK violations
+/// (organisation_id, updated_by) are classified as Other to avoid masking
+/// infrastructure errors.
 fn map_slug_fk_error(e: sqlx::Error) -> FeatureRepoError {
     if let sqlx::Error::Database(ref dbe) = e {
-        if dbe.code().as_deref() == Some("23503") {
+        if dbe.code().as_deref() == Some("23503")
+            && dbe.constraint() == Some("organisation_features_slug_fkey")
+        {
             return FeatureRepoError::UnknownSlug;
         }
     }
