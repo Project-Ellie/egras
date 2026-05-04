@@ -4,6 +4,7 @@ pub mod auth;
 pub mod config;
 pub mod db;
 pub mod errors;
+pub mod features;
 pub mod jobs;
 pub mod openapi;
 pub mod outbox;
@@ -96,12 +97,20 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
     )
     .spawn();
 
+    let features: Arc<dyn crate::features::persistence::FeatureRepository> = Arc::new(
+        crate::features::persistence::FeaturePgRepository::new(pool.clone()),
+    );
+    let feature_evaluator: Arc<dyn crate::features::FeatureEvaluator> =
+        Arc::new(crate::features::PgFeatureEvaluator::new(features.clone()));
+
     let state = AppState {
         audit_recorder,
         list_audit_events,
         organisations,
         roles,
         inbound_channels,
+        features,
+        feature_evaluator,
         users,
         tokens,
         service_accounts,
@@ -156,6 +165,10 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
         .route(
             "/api/v1/users",
             axum::routing::get(crate::security::interface::get_list_users),
+        )
+        .nest(
+            "/api/v1/features",
+            crate::features::interface::protected_router(),
         )
         .layer(auth_layer);
 

@@ -60,7 +60,7 @@ Goal: Wolfgang picks what matters; we then promote selected notes into specs und
 
 ### Business & Admin
 - [[Billing-and-Metering]] — usage capture hooks (no billing engine)
-- [[Feature-Flags]] — per-org/per-user toggles
+- ~~Feature-Flags~~ — **shipped**, see [[Feature-Flags]]
 - [[Bulk-Import-Export]] — CSV/JSON ingress + egress jobs
 - [[File-Attachments]] — object-storage abstraction
 - [[Search-Abstraction]] — full-text + faceted query layer

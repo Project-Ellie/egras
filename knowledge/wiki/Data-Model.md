@@ -131,6 +131,8 @@ Defined in [`migrations/0004_rbac.sql`](../../migrations/0004_rbac.sql).
 | `channels.manage` | Manage inbound channels for an organisation |
 | `audit.read_all` | Read audit events from any org |
 | `audit.read_own_org` | Read audit events of own org only |
+| `features.read` | Read feature flag values for own organisation |
+| `features.manage` | Set feature flag overrides for own organisation (self-service flags only; operators bypass) |
 
 ### `role_permissions`
 
@@ -152,6 +154,8 @@ Join table: `role_id` → `permission_id`. Many-to-many.
 | `channels.manage` | ✓ | ✓ | ✓ | |
 | `audit.read_all` | ✓ | | | |
 | `audit.read_own_org` | ✓ | ✓ | ✓ | |
+| `features.read` | ✓ | ✓ | ✓ | |
+| `features.manage` | ✓ | ✓ | ✓ | |
 
 ### `user_organisation_roles`
 
@@ -219,6 +223,33 @@ Indexes: `occurred_at`, `target_organisation_id`, `actor_user_id`, `event_type`.
 
 For the full event model, see [[Audit-System]].
 
+## `feature_definitions`
+
+Defined in [`migrations/0012_features.sql`](../../migrations/0012_features.sql). Authoritative catalog of feature flags, seeded via migrations. App code references slugs as constants.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `slug` | `text` PK | Unique identifier (e.g. `auth.api_key_headers`) |
+| `value_type` | `text` NOT NULL | CHECK in `('bool','string','int','enum_set','json')` |
+| `default_value` | `jsonb` NOT NULL | Default value for all organisations |
+| `description` | `text` NOT NULL | Human-readable description |
+| `self_service` | `bool` NOT NULL DEFAULT FALSE | Whether non-operators can override |
+| `created_at` / `updated_at` | `timestamptz` | |
+
+## `organisation_features`
+
+Defined in [`migrations/0012_features.sql`](../../migrations/0012_features.sql). Sparse per-org overrides of feature definitions.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `organisation_id` | `uuid` FK | → `organisations(id)` CASCADE DELETE |
+| `slug` | `text` FK | → `feature_definitions(slug)` RESTRICT DELETE |
+| `value` | `jsonb` NOT NULL | Override value for this org |
+| `updated_at` | `timestamptz` | |
+| `updated_by` | `uuid` FK | → `users(id)` — who made the change |
+
+PK: `(organisation_id, slug)`. Index on `organisation_id` for efficient lookups.
+
 ## `inbound_channels`
 
 Per-organisation ingress endpoints. Defined in [`migrations/0008_inbound_channels.sql`](../../migrations/0008_inbound_channels.sql).
@@ -250,6 +281,10 @@ Migrations are applied at startup via `sqlx::migrate!`. They are ordered and non
 | [`0006_audit.sql`](../../migrations/0006_audit.sql) | `audit_events` + indexes |
 | [`0007_revoked_tokens.sql`](../../migrations/0007_revoked_tokens.sql) | `revoked_tokens` + `expires_at` index |
 | [`0008_inbound_channels.sql`](../../migrations/0008_inbound_channels.sql) | `inbound_channels` + `channels.manage` permission |
+| [`0009_jobs.sql`](../../migrations/0009_jobs.sql) | `background_jobs` + durable job queue |
+| [`0010_outbox_events.sql`](../../migrations/0010_outbox_events.sql) | `outbox_events` + transaction-coupled event outbox |
+| [`0011_service_accounts.sql`](../../migrations/0011_service_accounts.sql) | Service accounts + API keys + related permissions |
+| [`0012_features.sql`](../../migrations/0012_features.sql) | `feature_definitions` + `organisation_features` + feature flag permissions |
 
 > [!warning] Migration 0005 is idempotent
 > `INSERT ... ON CONFLICT DO NOTHING` is used throughout seed migration 0005, so re-running migrations is safe.

@@ -36,6 +36,10 @@ use utoipa::OpenApi;
         crate::tenants::interface::get_channel,
         crate::tenants::interface::put_update_channel,
         crate::tenants::interface::delete_channel,
+        crate::features::interface::get_definitions,
+        crate::features::interface::get_org_features,
+        crate::features::interface::put_org_feature,
+        crate::features::interface::delete_org_feature,
     ),
     components(
         schemas(
@@ -74,6 +78,11 @@ use utoipa::OpenApi;
             crate::security::interface::ListApiKeysResponse,
             crate::security::interface::RotateApiKeyRequest,
             crate::errors::ErrorBody,
+            crate::features::interface::PutFeatureRequest,
+            crate::features::model::FeatureDefinition,
+            crate::features::model::EvaluatedFeature,
+            crate::features::model::FeatureValueType,
+            crate::features::model::FeatureSource,
         ),
     ),
     modifiers(&SecurityAddon),
@@ -81,6 +90,7 @@ use utoipa::OpenApi;
         (name = "tenants", description = "Organisation and role management"),
         (name = "security", description = "Authentication and user management"),
         (name = "service-accounts", description = "Service accounts and API keys"),
+        (name = "features", description = "Per-organisation feature flag management"),
     ),
 )]
 pub struct ApiDoc;

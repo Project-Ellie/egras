@@ -9,6 +9,287 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/features": {
+      "get": {
+        "tags": [
+          "features"
+        ],
+        "operationId": "get_definitions",
+        "responses": {
+          "200": {
+            "description": "Feature catalog (operator only)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FeatureDefinition"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/features/orgs/{org_id}": {
+      "get": {
+        "tags": [
+          "features"
+        ],
+        "operationId": "get_org_features",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "description": "Organisation ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Evaluated features for the org",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EvaluatedFeature"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organisation not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/features/orgs/{org_id}/{slug}": {
+      "put": {
+        "tags": [
+          "features"
+        ],
+        "operationId": "put_org_feature",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "description": "Organisation ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "slug",
+            "in": "path",
+            "description": "Feature slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutFeatureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated evaluated feature",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluatedFeature"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied or not self-service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organisation or feature not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "features"
+        ],
+        "operationId": "delete_org_feature",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "description": "Organisation ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "slug",
+            "in": "path",
+            "description": "Feature slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Override cleared"
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied or not self-service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organisation or feature not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/security/change-password": {
       "post": {
         "tags": [
@@ -2210,6 +2491,78 @@
           }
         }
       },
+      "EvaluatedFeature": {
+        "type": "object",
+        "description": "Effective value for an (org, slug) pair, with provenance for UI/audit.",
+        "required": [
+          "slug",
+          "value",
+          "source",
+          "value_type",
+          "self_service"
+        ],
+        "properties": {
+          "self_service": {
+            "type": "boolean"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/FeatureSource"
+          },
+          "value": {
+            "type": "object"
+          },
+          "value_type": {
+            "$ref": "#/components/schemas/FeatureValueType"
+          }
+        }
+      },
+      "FeatureDefinition": {
+        "type": "object",
+        "required": [
+          "slug",
+          "value_type",
+          "default_value",
+          "description",
+          "self_service"
+        ],
+        "properties": {
+          "default_value": {
+            "type": "object"
+          },
+          "description": {
+            "type": "string"
+          },
+          "self_service": {
+            "type": "boolean"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "value_type": {
+            "$ref": "#/components/schemas/FeatureValueType"
+          }
+        }
+      },
+      "FeatureSource": {
+        "type": "string",
+        "enum": [
+          "default",
+          "override"
+        ]
+      },
+      "FeatureValueType": {
+        "type": "string",
+        "enum": [
+          "bool",
+          "string",
+          "int",
+          "enum_set",
+          "json"
+        ]
+      },
       "ListApiKeysResponse": {
         "type": "object",
         "required": [
@@ -2465,6 +2818,17 @@
           }
         }
       },
+      "PutFeatureRequest": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "object"
+          }
+        }
+      },
       "RegisterRequest": {
         "type": "object",
         "required": [
@@ -2673,6 +3037,10 @@
     {
       "name": "service-accounts",
       "description": "Service accounts and API keys"
+    },
+    {
+      "name": "features",
+      "description": "Per-organisation feature flag management"
     }
   ]
 }

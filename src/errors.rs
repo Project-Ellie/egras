@@ -26,6 +26,12 @@ pub enum ErrorSlug {
     ResourceConflict,
     #[serde(rename = "user.no_organisation")]
     UserNoOrganisation,
+    #[serde(rename = "feature.unknown")]
+    FeatureUnknown,
+    #[serde(rename = "feature.not_self_service")]
+    FeatureNotSelfService,
+    #[serde(rename = "feature.invalid_value")]
+    FeatureInvalidValue,
     #[serde(rename = "internal.error")]
     InternalError,
 }
@@ -41,6 +47,9 @@ impl ErrorSlug {
             Self::ResourceNotFound => "resource.not_found",
             Self::ResourceConflict => "resource.conflict",
             Self::UserNoOrganisation => "user.no_organisation",
+            Self::FeatureUnknown => "feature.unknown",
+            Self::FeatureNotSelfService => "feature.not_self_service",
+            Self::FeatureInvalidValue => "feature.invalid_value",
             Self::InternalError => "internal.error",
         }
     }
@@ -74,6 +83,15 @@ pub enum AppError {
     #[error("user has no organisation")]
     UserNoOrganisation,
 
+    #[error("unknown feature slug")]
+    FeatureUnknown,
+
+    #[error("flag is not self_service; operator privileges required")]
+    FeatureNotSelfService,
+
+    #[error("value does not match declared type: {0}")]
+    FeatureInvalidValue(String),
+
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
 }
@@ -89,6 +107,9 @@ impl AppError {
             Self::NotFound { .. } => ErrorSlug::ResourceNotFound,
             Self::Conflict { .. } => ErrorSlug::ResourceConflict,
             Self::UserNoOrganisation => ErrorSlug::UserNoOrganisation,
+            Self::FeatureUnknown => ErrorSlug::FeatureUnknown,
+            Self::FeatureNotSelfService => ErrorSlug::FeatureNotSelfService,
+            Self::FeatureInvalidValue(_) => ErrorSlug::FeatureInvalidValue,
             Self::Internal(_) => ErrorSlug::InternalError,
         }
     }
@@ -103,6 +124,9 @@ impl AppError {
             Self::NotFound { .. } => StatusCode::NOT_FOUND,
             Self::Conflict { .. } => StatusCode::CONFLICT,
             Self::UserNoOrganisation => StatusCode::FORBIDDEN,
+            Self::FeatureUnknown => StatusCode::NOT_FOUND,
+            Self::FeatureNotSelfService => StatusCode::FORBIDDEN,
+            Self::FeatureInvalidValue(_) => StatusCode::BAD_REQUEST,
             Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -117,6 +141,9 @@ impl AppError {
             ErrorSlug::ResourceNotFound => "Not found",
             ErrorSlug::ResourceConflict => "Conflict",
             ErrorSlug::UserNoOrganisation => "User has no organisation",
+            ErrorSlug::FeatureUnknown => "Unknown feature",
+            ErrorSlug::FeatureNotSelfService => "Feature not self-service",
+            ErrorSlug::FeatureInvalidValue => "Invalid feature value",
             ErrorSlug::InternalError => "Internal error",
         }
     }
@@ -134,6 +161,13 @@ impl AppError {
             Self::NotFound { resource } => format!("{resource} was not found."),
             Self::Conflict { reason } => reason.clone(),
             Self::UserNoOrganisation => "The user does not belong to any organisation.".to_string(),
+            Self::FeatureUnknown => "No feature with the given slug exists.".to_string(),
+            Self::FeatureNotSelfService => {
+                "This flag is not self-service; operator privileges required.".to_string()
+            }
+            Self::FeatureInvalidValue(reason) => {
+                format!("Value does not match declared type: {reason}.")
+            }
             Self::Internal(_) => "An internal error occurred.".to_string(),
         }
     }

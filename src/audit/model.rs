@@ -487,6 +487,60 @@ impl AuditEvent {
         e
     }
 
+    pub fn feature_set(
+        actor: Uuid,
+        actor_org: Uuid,
+        org_id: Uuid,
+        slug: &str,
+        old_value: Option<&Value>,
+        new_value: &Value,
+        self_service: bool,
+    ) -> Self {
+        let mut e = Self::base(
+            AuditCategory::TenantsStateChange,
+            "feature.set",
+            Outcome::Success,
+        );
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("feature".into());
+        e.target_organisation_id = Some(org_id);
+        // target_id intentionally None — features are keyed by slug (carried in payload), no UUID PK.
+        e.payload = json!({
+            "slug": slug,
+            "old_value": old_value,
+            "new_value": new_value,
+            "self_service": self_service,
+        });
+        e
+    }
+
+    pub fn feature_cleared(
+        actor: Uuid,
+        actor_org: Uuid,
+        org_id: Uuid,
+        slug: &str,
+        old_value: Option<&Value>,
+        self_service: bool,
+    ) -> Self {
+        let mut e = Self::base(
+            AuditCategory::TenantsStateChange,
+            "feature.cleared",
+            Outcome::Success,
+        );
+        e.actor_user_id = Some(actor);
+        e.actor_organisation_id = Some(actor_org);
+        e.target_type = Some("feature".into());
+        e.target_organisation_id = Some(org_id);
+        // target_id intentionally None — features are keyed by slug (carried in payload), no UUID PK.
+        e.payload = json!({
+            "slug": slug,
+            "old_value": old_value,
+            "self_service": self_service,
+        });
+        e
+    }
+
     pub fn api_key_rotated(
         actor: Uuid,
         actor_org: Uuid,

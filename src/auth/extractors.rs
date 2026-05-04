@@ -250,3 +250,29 @@ impl Permission for ServiceAccountsManage {
         set.has(Self::CODE) || set.is_operator_over_tenants()
     }
 }
+
+/// Permission marker: `tenants.manage_all` (operator-only catalog access).
+pub struct TenantsManageAll;
+impl Permission for TenantsManageAll {
+    const CODE: &'static str = "tenants.manage_all";
+}
+
+/// Permission marker: `features.read`.
+/// Accepts either the direct permission OR `tenants.manage_all` operator bypass.
+pub struct FeaturesRead;
+impl Permission for FeaturesRead {
+    const CODE: &'static str = "features.read";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has(Self::CODE) || set.is_operator_over_tenants()
+    }
+}
+
+/// Permission marker: `features.manage`.
+/// Accepts either the direct permission OR `tenants.manage_all` operator bypass.
+pub struct FeaturesManage;
+impl Permission for FeaturesManage {
+    const CODE: &'static str = "features.manage";
+    fn accepts(set: &PermissionSet) -> bool {
+        set.has(Self::CODE) || set.is_operator_over_tenants()
+    }
+}
