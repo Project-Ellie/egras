@@ -44,6 +44,21 @@ Seeded in migration 0012:
 
 Used by the Echo subsystem to determine which HTTP headers are checked for API key authentication.
 
+## Persistence Layer (Implemented)
+
+`src/features/persistence/` mirrors the standard egras trait/impl split:
+
+- **`feature_repository.rs`** — `FeatureRepository` trait + `FeatureRepoError` (`UnknownSlug`, `Other`).
+- **`feature_repository_pg.rs`** — `FeaturePgRepository { pool: PgPool }` with:
+  - `list_definitions` / `get_definition` — reads `feature_definitions`, decodes `value_type` via `FeatureValueType::try_from_str`.
+  - `list_overrides_for_org` / `get_override` — reads `organisation_features`.
+  - `upsert_override` — CTE captures old value before INSERT … ON CONFLICT DO UPDATE; returns `Option<Value>` (None on first insert, Some(old) on update).
+  - `delete_override` — DELETE … RETURNING value; zero rows → None.
+  - FK violation on unknown slug (`23503`) → `FeatureRepoError::UnknownSlug`.
+  - JSONB columns decoded via `sqlx::types::Json<serde_json::Value>`.
+
+Tests: `tests/it/features_persistence_test.rs` (9 tests, all layers, real Postgres via `TestPool::fresh()`).
+
 ## Future Scope
 
 - **Admin UI** — Read/write UI for org admins to override flags (when `self_service = true`)
