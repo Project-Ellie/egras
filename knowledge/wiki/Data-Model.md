@@ -285,6 +285,8 @@ Migrations are applied at startup via `sqlx::migrate!`. They are ordered and non
 | [`0010_outbox_events.sql`](../../migrations/0010_outbox_events.sql) | `outbox_events` + transaction-coupled event outbox |
 | [`0011_service_accounts.sql`](../../migrations/0011_service_accounts.sql) | Service accounts + API keys + related permissions |
 | [`0012_features.sql`](../../migrations/0012_features.sql) | `feature_definitions` + `organisation_features` + feature flag permissions |
+| [`0013_echo_permission.sql`](../../migrations/0013_echo_permission.sql) | Seeds the `echo:invoke` permission row (no role grants — done separately) |
+| [`0014_grant_echo_to_org_roles.sql`](../../migrations/0014_grant_echo_to_org_roles.sql) | Grants `echo:invoke` to `org_admin` and `org_owner` roles (enables per-key scope restriction in notebooks) |
 
 > [!warning] Migration 0005 is idempotent
 > `INSERT ... ON CONFLICT DO NOTHING` is used throughout seed migration 0005, so re-running migrations is safe.
