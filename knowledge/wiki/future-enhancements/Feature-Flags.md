@@ -59,12 +59,59 @@ Used by the Echo subsystem to determine which HTTP headers are checked for API k
 
 Tests: `tests/it/features_persistence_test.rs` (10 tests, all layers, real Postgres via `TestPool::fresh()`).
 
+## Service Layer (Implemented)
+
+`src/features/service/` implements the business logic for features:
+
+- **`evaluate.rs`** — `FeatureEvaluator` trait + `PgFeatureEvaluator` implementation:
+  - In-memory TTL cache (default 60s) reduces DB load
+  - `evaluate(org_id, slug)` returns the effective value (override if exists, else default)
+  - `invalidate(org_id, slug)` and `invalidate_all()` clear cache entries (called after mutations)
+
+- **`list_definitions.rs`** — `list_definitions(repo)` returns all feature definitions from the catalog
+
+- **`list_org_features.rs`** — `list_org_features(repo, evaluator, org)` returns `Vec<EvaluatedFeature>` showing each flag's effective value and source (default or org-specific override)
+
+- **`set_org_feature.rs`** — `set_org_feature(repo, evaluator, audit, input)`:
+  - Validates `value` matches the flag's `value_type`
+  - Enforces `self_service` guard: non-operators can only set flags with `self_service = true`
+  - Upserts the override in the repository
+  - Invalidates the evaluator cache for this org + slug
+  - Emits `AuditEvent::feature_set` (if no guard rejection)
+
+- **`clear_org_feature.rs`** — `clear_org_feature(repo, evaluator, audit, input)`:
+  - Enforces `self_service` guard (same as set)
+  - Deletes the org override (falls back to default)
+  - Invalidates the evaluator cache
+  - Emits `AuditEvent::feature_cleared` (if no guard rejection)
+
+Tests: `tests/it/features_service_set_test.rs` (7 tests covering happy paths and all rejection scenarios with side-effect assertions).
+
+## Audit Integration (Implemented)
+
+All state-changing operations emit audit events via `AuditRecorder`:
+
+- **`feature.set`** — emitted when `set_org_feature` succeeds. Payload includes:
+  - `slug` — the feature slug
+  - `old_value` — prior override value or null if new override
+  - `new_value` — the new value
+  - `self_service` — whether the flag allows org-level self-service override
+  - Note: `target_id` is intentionally `None` because features are keyed by slug, not UUID
+
+- **`feature.cleared`** — emitted when `clear_org_feature` succeeds. Payload includes:
+  - `slug` — the feature slug
+  - `old_value` — the prior override value being removed
+  - `self_service` — whether the flag allows org-level self-service override
+  - Note: `target_id` is intentionally `None` (same reason as above)
+
+Rejection-path events (e.g., `NotSelfService`, `UnknownSlug`, `InvalidValue`) do not emit audit events.
+
 ## Future Scope
 
 - **Admin UI** — Read/write UI for org admins to override flags (when `self_service = true`)
 - **Client SDKs** — Optional Unleash or OpenFeature client for rule-based evaluation
 - **Per-user flags** — Extend to user-level overrides for canary deployments
-- **Audit trail** — Record every flag change as an audit event (use [[Audit-System]])
-- **Cache + TTL** — In-memory flag cache with periodic refresh to reduce DB load
+- **Metrics** — Track feature flag usage (which orgs use which flags, frequency of evaluations)
+- **Rules engine** — Context-aware evaluation (e.g., flag value depends on user attributes, time of day)
 
 **Touches:** [[Configuration]], [[Audit-System]], [[Authorization]].
