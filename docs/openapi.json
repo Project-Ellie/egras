@@ -2511,7 +2511,9 @@
           "source": {
             "$ref": "#/components/schemas/FeatureSource"
           },
-          "value": {},
+          "value": {
+            "type": "object"
+          },
           "value_type": {
             "$ref": "#/components/schemas/FeatureValueType"
           }
@@ -2527,7 +2529,9 @@
           "self_service"
         ],
         "properties": {
-          "default_value": {},
+          "default_value": {
+            "type": "object"
+          },
           "description": {
             "type": "string"
           },

@@ -96,6 +96,15 @@ async fn get_features_other_org_as_non_operator_returns_404() {
         .unwrap();
 
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert!(
+        body["type"]
+            .as_str()
+            .unwrap_or("")
+            .ends_with("/resource.not_found"),
+        "expected slug resource.not_found, got type={:?}",
+        body["type"]
+    );
 
     app.stop().await;
 }

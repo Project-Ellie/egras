@@ -56,6 +56,7 @@ impl FeatureValueType {
 pub struct FeatureDefinition {
     pub slug: String,
     pub value_type: FeatureValueType,
+    #[schema(value_type = Object)]
     pub default_value: Value,
     pub description: String,
     pub self_service: bool,
@@ -74,6 +75,7 @@ pub struct OrgFeatureOverride {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct EvaluatedFeature {
     pub slug: String,
+    #[schema(value_type = Object)]
     pub value: Value,
     pub source: FeatureSource,
     pub value_type: FeatureValueType,
