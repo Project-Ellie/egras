@@ -56,6 +56,10 @@ Files: `src/echo/{mod,interface,service}.rs`, `tests/it/echo/mod.rs`, `src/lib.r
 - [ ] **1.6** `cargo run -- dump-openapi > docs/openapi.json`.
 - [ ] **1.7** Commit: `feat(echo): add /v1/echo endpoint guarded by echo:invoke permission`.
 
+### Task 1.5 — API-key middleware honours `auth.api_key_headers`
+
+API-key middleware reads the per-org `auth.api_key_headers` flag for the org of the resolved key; rejects with 401 if the header used to present the key is not in the allowlist. Default `["x-api-key","authorization-bearer"]` keeps existing behaviour. Touches `src/auth/middleware.rs`. Add an integration test that overrides the flag to `["x-api-key"]` for a given org and asserts a `Authorization: Bearer <key>` request gets 401 while `X-API-Key: <key>` still works.
+
 ### Task 2 — Wiki note for Echo
 
 - [ ] **2.1** Create `knowledge/wiki/Echo-Service.md` — purpose (notebook target), endpoint shapes, permission slug, auth model, link to `Service-Accounts.md`.
@@ -98,6 +102,9 @@ Files: `src/echo/{mod,interface,service}.rs`, `tests/it/echo/mod.rs`, `src/lib.r
   8. Code: assertions — `resp.status_code == 200`; `resp.json()["payload"] == {"hello": "world"}`; `resp.json()["org_id"] == org["id"]`.
   9. Markdown: negative case header.
   10. Code: mint a second key WITHOUT `echo:invoke` → assert 403.
+  11. Markdown: header-allowlist demonstration.
+  12. Code: as operator, `op.put(f"/api/v1/features/orgs/{org['id']}/auth.api_key_headers", json={"value": ["x-api-key"]})` → 200.
+  13. Code: with the original key, send `Authorization: Bearer <key>` → assert 401; then send `X-API-Key: <key>` → assert 200.
 - [ ] **4.2** Run notebook end-to-end manually; confirm green.
 - [ ] **4.3** Run `pytest --nbmake notebooks/scenarios/01_echo_smoke.ipynb` — green.
 - [ ] **4.4** Commit: `test(notebooks): first scenario — echo smoke`.
@@ -125,7 +132,7 @@ Files: `src/echo/{mod,interface,service}.rs`, `tests/it/echo/mod.rs`, `src/lib.r
 ---
 
 ## Unresolved questions
-1. **API-key header name.** `X-API-Key`, `Authorization: Bearer …`, or both? Need to read `src/auth/middleware.rs` before writing `lib/egras.py`. Cheap to check; flagging so plan-reader doesn't guess.
+1. **Resolved:** API-key header is governed by per-org flag `auth.api_key_headers` (enum_set). Echo PR depends on Feature-Flags PR (2026-05-04). Default `["x-api-key","authorization-bearer"]` allows both.
 2. **Permission granting model.** Is `echo:invoke` granted via API-key `scopes` at mint time, or via a separate `grant_permission` on the service account, or both? Determines `lib/egras.py` shape. (My current draft assumes scopes-at-mint.)
 3. **Operator credentials in notebooks.** Hardcode dev defaults from `seed-admin` (visible in repo, fine for local), or read from env? Vote: env with documented defaults in README.
 4. **Should the echo response also include the request headers?** Useful for "see what the server sees" debugging, but leaks. Default: no — only method, payload, org_id, key_id, timestamp.
