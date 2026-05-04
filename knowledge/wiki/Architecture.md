@@ -24,7 +24,7 @@ audit/     │  handlers   list_evts   AuditEvent AuditRepositoryPg
 
 | Domain | Responsibility |
 |--------|---------------|
-| `echo/` | Smoke-test endpoint — reflects caller identity and payload back; no persistence · See [[echo/]] |
+| `echo/` | Smoke-test endpoint — reflects caller identity and payload back; no persistence · See [[Echo-Service]] |
 | `features/` | Org-level feature flags — definitions, overrides, evaluation · See [[Feature-Flags]] |
 | `security/` | Users, authentication, password management |
 | `tenants/` | Organisations, memberships, role assignment |
