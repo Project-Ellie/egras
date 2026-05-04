@@ -14,6 +14,7 @@ mod auth_permissions_test;
 mod bootstrap_seed_admin_test;
 mod config_test;
 mod e2e_seed_admin_login_test;
+mod echo_http_test;
 mod errors_test;
 mod features_http_test;
 mod features_persistence_test;

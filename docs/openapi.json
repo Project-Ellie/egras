@@ -9,6 +9,102 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/echo": {
+      "get": {
+        "tags": [
+          "echo"
+        ],
+        "operationId": "get_echo",
+        "responses": {
+          "200": {
+            "description": "Echo response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EchoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "echo"
+        ],
+        "operationId": "post_echo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Echo response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EchoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/crate.errors.ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/features": {
       "get": {
         "tags": [
@@ -2440,6 +2536,49 @@
           }
         }
       },
+      "EchoResponse": {
+        "type": "object",
+        "description": "Response body returned by both GET and POST /api/v1/echo.",
+        "required": [
+          "method",
+          "payload",
+          "org_id",
+          "principal_user_id",
+          "received_at"
+        ],
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "API key ID when authenticated via API key; `null` for JWT callers.",
+            "nullable": true
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP method of the incoming request (\"GET\" or \"POST\")."
+          },
+          "org_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Organisation the caller belongs to."
+          },
+          "payload": {
+            "type": "object",
+            "description": "The JSON payload sent in the request body, or `null` for GET.",
+            "nullable": true
+          },
+          "principal_user_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The principal user ID (human user or service account user)."
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Server-side timestamp at which the request was received (RFC 3339)."
+          }
+        }
+      },
       "ErrorBody": {
         "type": "object",
         "description": "RFC 7807 problem body returned on all error responses.\n\nAll six stable fields are present in every response; `errors` is included\nonly on validation errors (HTTP 400) and maps field name → list of slugs.",
@@ -3041,6 +3180,10 @@
     {
       "name": "features",
       "description": "Per-organisation feature flag management"
+    },
+    {
+      "name": "echo",
+      "description": "Smoke-test echo endpoint"
     }
   ]
 }

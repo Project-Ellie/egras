@@ -40,6 +40,8 @@ use utoipa::OpenApi;
         crate::features::interface::get_org_features,
         crate::features::interface::put_org_feature,
         crate::features::interface::delete_org_feature,
+        crate::echo::interface::get_echo,
+        crate::echo::interface::post_echo,
     ),
     components(
         schemas(
@@ -83,6 +85,7 @@ use utoipa::OpenApi;
             crate::features::model::EvaluatedFeature,
             crate::features::model::FeatureValueType,
             crate::features::model::FeatureSource,
+            crate::echo::service::EchoResponse,
         ),
     ),
     modifiers(&SecurityAddon),
@@ -91,6 +94,7 @@ use utoipa::OpenApi;
         (name = "security", description = "Authentication and user management"),
         (name = "service-accounts", description = "Service accounts and API keys"),
         (name = "features", description = "Per-organisation feature flag management"),
+        (name = "echo", description = "Smoke-test echo endpoint"),
     ),
 )]
 pub struct ApiDoc;

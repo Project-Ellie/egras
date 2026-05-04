@@ -24,6 +24,7 @@ audit/     │  handlers   list_evts   AuditEvent AuditRepositoryPg
 
 | Domain | Responsibility |
 |--------|---------------|
+| `echo/` | Smoke-test endpoint — reflects caller identity and payload back; no persistence · See [[echo/]] |
 | `features/` | Org-level feature flags — definitions, overrides, evaluation · See [[Feature-Flags]] |
 | `security/` | Users, authentication, password management |
 | `tenants/` | Organisations, memberships, role assignment |
@@ -190,6 +191,11 @@ src/
 │       ├─ organisation_repository_pg.rs
 │       ├─ role_repository.rs
 │       └─ role_repository_pg.rs
+│
+├─ echo/
+│   ├─ mod.rs
+│   ├─ service.rs             build_echo() — pure fn; EchoResponse DTO; no DB
+│   └─ interface.rs           get_echo / post_echo handlers; router(); EchoInvoke perm marker in auth/extractors.rs
 │
 ├─ features/
 │   ├─ mod.rs
