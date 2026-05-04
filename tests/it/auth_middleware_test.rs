@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -7,6 +9,7 @@ use axum::{
 use egras::auth::jwt::{encode_access_token, Claims};
 use egras::auth::middleware::AuthLayer;
 use egras::auth::permissions::PermissionSet;
+use egras::testing::PermitAllFeatureEvaluator;
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -34,6 +37,7 @@ fn router_with_static_permissions() -> Router {
             loader,
             egras::auth::middleware::RevocationChecker::none(),
             egras::auth::middleware::ApiKeyVerifier::new(egras::auth::middleware::NoApiKeyVerifier),
+            Arc::new(PermitAllFeatureEvaluator),
         ))
 }
 

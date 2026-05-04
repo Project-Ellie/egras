@@ -8,6 +8,7 @@ mod audit_persistence_test;
 mod audit_recorder_test;
 mod audit_worker_test;
 mod auth_api_key_dispatch_test;
+mod auth_api_key_header_allowlist_test;
 mod auth_jwt_test;
 mod auth_middleware_test;
 mod auth_permissions_test;

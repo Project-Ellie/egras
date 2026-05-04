@@ -156,6 +156,7 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
         PermissionLoader::pg(pool.clone()),
         RevocationChecker::pg(pool.clone()),
         api_key_verifier,
+        state.feature_evaluator.clone(),
     );
     let protected: Router<AppState> = Router::new()
         .nest("/api/v1/tenants", crate::tenants::interface::router())
