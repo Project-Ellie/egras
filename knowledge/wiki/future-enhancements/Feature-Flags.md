@@ -54,10 +54,10 @@ Used by the Echo subsystem to determine which HTTP headers are checked for API k
   - `list_overrides_for_org` / `get_override` — reads `organisation_features`.
   - `upsert_override` — CTE captures old value before INSERT … ON CONFLICT DO UPDATE; returns `Option<Value>` (None on first insert, Some(old) on update).
   - `delete_override` — DELETE … RETURNING value; zero rows → None.
-  - FK violation on unknown slug (`23503`) → `FeatureRepoError::UnknownSlug`.
+  - FK violation on slug constraint only (`23503` + `organisation_features_slug_fkey`) → `FeatureRepoError::UnknownSlug`; other FK violations (e.g., bad `organisation_id` or `updated_by`) → `FeatureRepoError::Other`.
   - JSONB columns decoded via `sqlx::types::Json<serde_json::Value>`.
 
-Tests: `tests/it/features_persistence_test.rs` (9 tests, all layers, real Postgres via `TestPool::fresh()`).
+Tests: `tests/it/features_persistence_test.rs` (10 tests, all layers, real Postgres via `TestPool::fresh()`).
 
 ## Future Scope
 
