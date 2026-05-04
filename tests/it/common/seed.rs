@@ -70,3 +70,19 @@ pub async fn grant_role(pool: &PgPool, user: Uuid, org: Uuid, role_code: &str) {
     .await
     .expect("grant role");
 }
+
+/// Add a permission (by code) to a role (by code). Idempotent (ON CONFLICT DO NOTHING).
+/// Useful in tests to grant ad-hoc permissions not seeded by migrations.
+pub async fn grant_permission_to_role(pool: &PgPool, role_code: &str, permission_code: &str) {
+    sqlx::query(
+        "INSERT INTO role_permissions (role_id, permission_id) \
+         SELECT r.id, p.id FROM roles r, permissions p \
+         WHERE r.code = $1 AND p.code = $2 \
+         ON CONFLICT DO NOTHING",
+    )
+    .bind(role_code)
+    .bind(permission_code)
+    .execute(pool)
+    .await
+    .unwrap_or_else(|_| panic!("grant_permission_to_role({role_code}, {permission_code}) failed"));
+}

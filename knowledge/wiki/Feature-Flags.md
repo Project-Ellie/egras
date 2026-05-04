@@ -59,7 +59,7 @@ Seeded in migration 0012:
 - **description:** Which headers carry API keys for this org (subset of supported headers)
 - **self_service:** `false` (operator-only override)
 
-Used by the Echo subsystem to determine which HTTP headers are checked for API key authentication.
+This is the **first flag consumed by egras infrastructure**: `AuthLayer` in `src/auth/middleware.rs` evaluates it on every API-key request to enforce which header sources are permitted for that org. See [[Authentication#Middleware]] for the full enforcement logic.
 
 ## HTTP Surface
 

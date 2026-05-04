@@ -51,6 +51,10 @@ Goal: Wolfgang picks what matters; we then promote selected notes into specs und
 - [[Error-Deduplication-and-Alerting]] — fingerprinted errors, one alert per incident not thousands
 - [[Backup-and-Disaster-Recovery]] — RPO/RTO runbook
 
+### Developer Experience & Testing
+- ~~Notebook-Harness~~ — **shipped**, see [[Notebook-Harness]]
+- ~~Echo-Service~~ — **shipped**, see [[Echo-Service]] (smoke target only, not a real feature)
+
 ### Compliance & Data
 - [[GDPR-DSAR]] — export/erase per subject
 - [[Data-Retention-Policies]] — per-resource TTL + legal hold

@@ -3,6 +3,7 @@ pub mod audit;
 pub mod auth;
 pub mod config;
 pub mod db;
+pub mod echo;
 pub mod errors;
 pub mod features;
 pub mod jobs;
@@ -155,6 +156,7 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
         PermissionLoader::pg(pool.clone()),
         RevocationChecker::pg(pool.clone()),
         api_key_verifier,
+        state.feature_evaluator.clone(),
     );
     let protected: Router<AppState> = Router::new()
         .nest("/api/v1/tenants", crate::tenants::interface::router())
@@ -170,6 +172,7 @@ pub async fn build_app(pool: PgPool, cfg: AppConfig) -> anyhow::Result<AppHandle
             "/api/v1/features",
             crate::features::interface::protected_router(),
         )
+        .nest("/api/v1/echo", crate::echo::interface::router())
         .layer(auth_layer);
 
     // 4. Compose

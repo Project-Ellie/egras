@@ -19,6 +19,24 @@ use crate::auth::extractors::Caller;
 use crate::auth::jwt::{decode_access_token, Claims};
 use crate::auth::permissions::PermissionSet;
 use crate::errors::AppError;
+use crate::features::FeatureEvaluator;
+
+/// Identifies which HTTP header carried the API-key credential.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HeaderSource {
+    XApiKey,
+    AuthorizationBearer,
+}
+
+impl HeaderSource {
+    /// The slug used in the `auth.api_key_headers` allowlist.
+    fn slug(self) -> &'static str {
+        match self {
+            Self::XApiKey => "x-api-key",
+            Self::AuthorizationBearer => "authorization-bearer",
+        }
+    }
+}
 
 /// Strategy for loading permissions for a `(user_id, organisation_id)` pair.
 #[async_trait]
@@ -200,6 +218,7 @@ pub struct AuthLayer {
     loader: PermissionLoader,
     revocation: RevocationChecker,
     api_keys: ApiKeyVerifier,
+    features: Arc<dyn FeatureEvaluator>,
 }
 
 impl AuthLayer {
@@ -209,6 +228,7 @@ impl AuthLayer {
         loader: PermissionLoader,
         revocation: RevocationChecker,
         api_keys: ApiKeyVerifier,
+        features: Arc<dyn FeatureEvaluator>,
     ) -> Self {
         Self {
             secret: Arc::new(secret),
@@ -216,6 +236,7 @@ impl AuthLayer {
             loader,
             revocation,
             api_keys,
+            features,
         }
     }
 }
@@ -230,6 +251,7 @@ impl<S> Layer<S> for AuthLayer {
             loader: self.loader.clone(),
             revocation: self.revocation.clone(),
             api_keys: self.api_keys.clone(),
+            features: self.features.clone(),
         }
     }
 }
@@ -242,6 +264,7 @@ pub struct AuthService<S> {
     loader: PermissionLoader,
     revocation: RevocationChecker,
     api_keys: ApiKeyVerifier,
+    features: Arc<dyn FeatureEvaluator>,
 }
 
 impl<S> Service<Request<Body>> for AuthService<S>
@@ -265,95 +288,101 @@ where
         let loader = self.loader.clone();
         let revocation = self.revocation.clone();
         let api_keys = self.api_keys.clone();
+        let features = self.features.clone();
 
         Box::pin(async move {
-            // Extract bearer token
-            let token = match req
+            // ── Step 1: Detect credential source ─────────────────────────────
+            //
+            // `X-API-Key` takes precedence over `Authorization: Bearer`.
+            // If X-API-Key is present, the token MUST be an API key — a JWT
+            // in that header is rejected immediately.
+            // If only Authorization: Bearer is present, the token may be
+            // either an API key or a JWT (sniffed by the `egras_` prefix).
+
+            let x_api_key_token = req
                 .headers()
-                .get(header::AUTHORIZATION)
+                .get("x-api-key")
                 .and_then(|v| v.to_str().ok())
-            {
-                Some(h) if h.starts_with("Bearer ") => h["Bearer ".len()..].to_string(),
-                _ => {
+                .map(|s| (s.to_string(), HeaderSource::XApiKey));
+
+            let bearer_token = if x_api_key_token.is_some() {
+                None // X-API-Key takes precedence
+            } else {
+                req.headers()
+                    .get(header::AUTHORIZATION)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|h| h.strip_prefix("Bearer ").map(str::to_string))
+                    .map(|t| (t, HeaderSource::AuthorizationBearer))
+            };
+
+            let (token, header_source) = match x_api_key_token.or(bearer_token) {
+                Some(pair) => pair,
+                None => {
                     return Ok(AppError::Unauthenticated {
-                        reason: "missing_bearer".into(),
+                        reason: "missing_credentials".into(),
                     }
                     .into_response());
                 }
             };
 
-            // API-key path: prefix sniff
-            if let Some(parsed) = crate::security::service::api_key_secret::parse(&token) {
-                let verified = match api_keys.verify(parsed.prefix, parsed.secret).await {
-                    Ok(Some(v)) => v,
-                    Ok(None) => {
+            // ── Step 2: X-API-Key path ────────────────────────────────────────
+            //
+            // X-API-Key MUST carry an API key — if `parse` returns None the
+            // token is not in `egras_<prefix>.<secret>` format → reject.
+
+            if header_source == HeaderSource::XApiKey {
+                let parsed = match crate::security::service::api_key_secret::parse(&token) {
+                    Some(p) => p,
+                    None => {
                         return Ok(AppError::Unauthenticated {
                             reason: "invalid_api_key".into(),
                         }
                         .into_response());
                     }
-                    Err(err) => {
-                        tracing::error!(error = %err, "api key verifier failed");
-                        return Ok(
-                            (StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response()
-                        );
-                    }
                 };
 
-                let codes = match loader
-                    .load(verified.sa_user_id, verified.organisation_id)
-                    .await
-                {
-                    Ok(c) => c,
-                    Err(err) => {
-                        tracing::error!(error = %err, "permission loader failed (api key path)");
-                        return Ok(
-                            (StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response()
-                        );
-                    }
-                };
-                let mut perms = PermissionSet::from_codes(codes);
-                if let Some(scopes) = verified.scopes.as_ref() {
-                    perms = perms.intersect(scopes);
-                }
-
-                // Best-effort throttled last_used touch — fire-and-forget.
-                let api_keys2 = api_keys.clone();
-                let key_id_for_touch = verified.key_id;
-                let sa_for_touch = verified.sa_user_id;
-                tokio::spawn(async move {
-                    api_keys2
-                        .touch_last_used(key_id_for_touch, sa_for_touch)
-                        .await;
-                });
-
-                // Synthesised Claims for downstream handlers using the existing
-                // AuthedCaller / Perm<P> extractors. jti is deterministic from
-                // the api_key.id; exp far in the future (never re-validated post-
-                // middleware on the api-key path).
-                let now = chrono::Utc::now().timestamp();
-                let synth_jti = Uuid::from_u128(verified.key_id.as_u128() ^ 0xA1A1_A1A1_u128);
-                let claims = Claims {
-                    sub: verified.sa_user_id,
-                    org: verified.organisation_id,
-                    iat: now,
-                    exp: now + 365 * 24 * 3600,
-                    jti: synth_jti,
-                    iss: (*issuer).clone(),
-                    typ: "access".to_string(),
-                };
-
-                req.extensions_mut().insert(claims);
-                req.extensions_mut().insert(perms);
-                req.extensions_mut().insert(Caller::ApiKey {
-                    key_id: verified.key_id,
-                    sa_user_id: verified.sa_user_id,
-                    org_id: verified.organisation_id,
-                });
-                return inner.call(req).await;
+                return handle_api_key(
+                    ApiKeyCtx {
+                        prefix: parsed.prefix,
+                        secret: parsed.secret,
+                        header_source: HeaderSource::XApiKey,
+                        api_keys: &api_keys,
+                        features: &features,
+                        loader: &loader,
+                        issuer: &issuer,
+                    },
+                    &mut inner,
+                    req,
+                )
+                .await;
             }
 
-            // JWT path
+            // ── Step 3: Authorization: Bearer path ────────────────────────────
+            //
+            // Token may be an API key (sniffed by prefix) OR a JWT.
+
+            if let Some(parsed) = crate::security::service::api_key_secret::parse(&token) {
+                return handle_api_key(
+                    ApiKeyCtx {
+                        prefix: parsed.prefix,
+                        secret: parsed.secret,
+                        header_source: HeaderSource::AuthorizationBearer,
+                        api_keys: &api_keys,
+                        features: &features,
+                        loader: &loader,
+                        issuer: &issuer,
+                    },
+                    &mut inner,
+                    req,
+                )
+                .await;
+            }
+
+            // ── Step 4: JWT path ──────────────────────────────────────────────
+            //
+            // The allowlist flag does NOT apply here — the flag governs API-key
+            // transport only.
+
             let claims = match decode_access_token(&secret, &issuer, &token) {
                 Ok(c) => c,
                 Err(_) => {
@@ -403,4 +432,154 @@ where
             inner.call(req).await
         })
     }
+}
+
+/// Dependencies threaded into [`handle_api_key`] to stay under clippy's
+/// `too_many_arguments` limit.
+struct ApiKeyCtx<'a> {
+    prefix: &'a str,
+    secret: &'a str,
+    header_source: HeaderSource,
+    api_keys: &'a ApiKeyVerifier,
+    features: &'a Arc<dyn FeatureEvaluator>,
+    loader: &'a PermissionLoader,
+    issuer: &'a str,
+}
+
+/// Shared logic for the API-key path (used by both header sources).
+///
+/// 1. Verifies the key prefix + secret.
+/// 2. Evaluates `auth.api_key_headers` for the org of the verified key.
+/// 3. Rejects if `header_source` is not in the allowlist.
+/// 4. Loads permissions, synthesises Claims, inserts extensions, forwards.
+async fn handle_api_key<S>(
+    ctx: ApiKeyCtx<'_>,
+    inner: &mut S,
+    mut req: Request<Body>,
+) -> Result<Response<Body>, S::Error>
+where
+    S: Service<Request<Body>, Response = Response<Body>> + Clone + Send + 'static,
+    S::Future: Send + 'static,
+{
+    let ApiKeyCtx {
+        prefix,
+        secret,
+        header_source,
+        api_keys,
+        features,
+        loader,
+        issuer,
+    } = ctx;
+    // Verify prefix + secret.
+    let verified = match api_keys.verify(prefix, secret).await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            return Ok(AppError::Unauthenticated {
+                reason: "invalid_api_key".into(),
+            }
+            .into_response());
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "api key verifier failed");
+            return Ok((StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response());
+        }
+    };
+
+    // Evaluate the per-org allowlist AFTER we have the org_id.
+    let allowlist_value = match features
+        .evaluate(verified.organisation_id, "auth.api_key_headers")
+        .await
+    {
+        Ok(v) => v,
+        Err(err) => {
+            tracing::error!(error = %err, "feature evaluator failed (auth.api_key_headers)");
+            return Ok((StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response());
+        }
+    };
+
+    let allowed: Vec<String> = match allowlist_value.as_array() {
+        Some(arr) => {
+            let total = arr.len();
+            let allowed: Vec<String> = arr
+                .iter()
+                .filter_map(|v| v.as_str().map(str::to_string))
+                .collect();
+            if allowed.len() < total {
+                tracing::warn!(
+                    org_id = %verified.organisation_id,
+                    dropped = total - allowed.len(),
+                    "auth.api_key_headers contains non-string entries; dropping them"
+                );
+            }
+            allowed
+        }
+        None => {
+            tracing::error!(value = %allowlist_value, "auth.api_key_headers flag is not an array");
+            return Ok((StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response());
+        }
+    };
+
+    if !allowed.iter().any(|h| h == header_source.slug()) {
+        tracing::warn!(
+            org_id = %verified.organisation_id,
+            key_id = %verified.key_id,
+            header_source = header_source.slug(),
+            "api key rejected: header source not in org allowlist"
+        );
+        return Ok(AppError::Unauthenticated {
+            reason: format!("api_key_header_not_allowed:{}", header_source.slug()),
+        }
+        .into_response());
+    }
+
+    // Load permissions and synthesise Claims.
+    let codes = match loader
+        .load(verified.sa_user_id, verified.organisation_id)
+        .await
+    {
+        Ok(c) => c,
+        Err(err) => {
+            tracing::error!(error = %err, "permission loader failed (api key path)");
+            return Ok((StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response());
+        }
+    };
+    let mut perms = PermissionSet::from_codes(codes);
+    if let Some(scopes) = verified.scopes.as_ref() {
+        perms = perms.intersect(scopes);
+    }
+
+    // Best-effort throttled last_used touch — fire-and-forget.
+    let api_keys2 = api_keys.clone();
+    let key_id_for_touch = verified.key_id;
+    let sa_for_touch = verified.sa_user_id;
+    tokio::spawn(async move {
+        api_keys2
+            .touch_last_used(key_id_for_touch, sa_for_touch)
+            .await;
+    });
+
+    // Synthesised Claims for downstream handlers using the existing
+    // AuthedCaller / Perm<P> extractors. jti is deterministic from
+    // the api_key.id; exp far in the future (never re-validated post-
+    // middleware on the api-key path).
+    let now = chrono::Utc::now().timestamp();
+    let synth_jti = Uuid::from_u128(verified.key_id.as_u128() ^ 0xA1A1_A1A1_u128);
+    let claims = Claims {
+        sub: verified.sa_user_id,
+        org: verified.organisation_id,
+        iat: now,
+        exp: now + 365 * 24 * 3600,
+        jti: synth_jti,
+        iss: issuer.to_string(),
+        typ: "access".to_string(),
+    };
+
+    req.extensions_mut().insert(claims);
+    req.extensions_mut().insert(perms);
+    req.extensions_mut().insert(Caller::ApiKey {
+        key_id: verified.key_id,
+        sa_user_id: verified.sa_user_id,
+        org_id: verified.organisation_id,
+    });
+    inner.call(req).await
 }

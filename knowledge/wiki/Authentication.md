@@ -38,22 +38,52 @@ Encoding and decoding live in [`src/auth/jwt.rs`](../../src/auth/jwt.rs).
 
 [`src/auth/middleware.rs`](../../src/auth/middleware.rs) contains `AuthLayer`, a tower `Layer` applied to all protected routes. On every request it:
 
-1. Extracts the `Authorization: Bearer <token>` header
-2. **Sniffs the prefix.** Tokens starting with `egras_` go to the API-key path (see [[Service-Accounts]]); everything else goes to the JWT path described below.
-3. Decodes and validates the JWT (algorithm, issuer, expiry, typ)
-4. Calls `RevocationChecker::is_revoked(jti)` — rejects with 401 if found
-5. Calls `PermissionLoader::load(user_id, org_id)` — loads permissions from DB
-6. Inserts `Claims`, `PermissionSet`, and `Caller::User { user_id, org_id, jti }` into request extensions
+### Header detection and precedence
 
-For the API-key path, the same `Claims` + `PermissionSet` shape is produced (Claims is **synthesised** for compatibility with the existing extractors), plus `Caller::ApiKey { key_id, sa_user_id, org_id }`. The per-key `scopes` are intersected with the SA's loaded permissions before insertion. Revocation lives at `api_keys.revoked_at` and is enforced inside `ApiKeyVerifier::verify`. See [[Service-Accounts]] for the full API-key auth path.
+Two header sources carry API-key credentials:
+
+| Header | Slug in allowlist |
+|--------|------------------|
+| `X-API-Key: egras_<key>` | `x-api-key` |
+| `Authorization: Bearer egras_<key>` | `authorization-bearer` |
+
+**`X-API-Key` takes precedence**: if both headers are present only `X-API-Key` is read. `X-API-Key` can only carry an API key (not a JWT) — a non-`egras_*` token in that header is rejected immediately with 401.
+
+`Authorization: Bearer` can carry either an API key (sniffed by the `egras_` prefix) or a JWT. The JWT path only applies when `Authorization: Bearer` is used.
+
+### API-key path
+
+1. Detect credential source (`X-API-Key` > `Authorization: Bearer`).
+2. Parse the `egras_<prefix>.<secret>` token via `api_key_secret::parse`.
+3. Call `ApiKeyVerifier::verify(prefix, secret)` — looks up the prefix, constant-time-compares the secret against the stored argon2 hash, checks `revoked_at`.
+4. **Evaluate the per-org allowlist.** Call `FeatureEvaluator::evaluate(org_id, "auth.api_key_headers")` — see [[Feature-Flags]]. Reject with 401 if the header source's slug is not in the list.
+5. Call `PermissionLoader::load(sa_user_id, org_id)`, intersect with per-key scopes.
+6. Synthesise `Claims` (compatible with JWT extractors), insert `Claims`, `PermissionSet`, `Caller::ApiKey { key_id, sa_user_id, org_id }` into extensions.
+
+Default allowlist: `["x-api-key", "authorization-bearer"]` (both accepted). Controlled per-org by the `auth.api_key_headers` flag — operator-only, `self_service = false`.
+
+Rejection when header source is blocked: 401 `auth.unauthenticated` with `reason: "api_key_header_not_allowed:<slug>"`.
+
+### JWT path
+
+1. Extract `Authorization: Bearer <token>` (non-`egras_` token).
+2. Decode and validate the JWT (algorithm, issuer, expiry, `typ`).
+3. Call `RevocationChecker::is_revoked(jti)` — rejects with 401 if found.
+4. Call `PermissionLoader::load(user_id, org_id)`.
+5. Insert `Claims`, `PermissionSet`, `Caller::User { user_id, org_id, jti }` into extensions.
+
+The allowlist flag does **not** apply to the JWT path — it governs API-key transport only.
 
 If any step fails the request is rejected before the handler is called:
 
 | Failure | HTTP Status |
 |---------|------------|
-| Missing or malformed header | 401 `auth.unauthenticated` |
-| Expired token | 401 `auth.unauthenticated` |
-| Revoked JTI | 401 `auth.unauthenticated` |
+| No credentials in any supported header | 401 `auth.unauthenticated` (`missing_credentials`) |
+| `X-API-Key` carries a non-API-key token | 401 `auth.unauthenticated` (`invalid_api_key`) |
+| Unknown prefix or wrong secret | 401 `auth.unauthenticated` (`invalid_api_key`) |
+| Header source not in org allowlist | 401 `auth.unauthenticated` (`api_key_header_not_allowed:<slug>`) |
+| Expired JWT | 401 `auth.unauthenticated` |
+| Revoked JTI | 401 `auth.unauthenticated` (`token_revoked`) |
 | Wrong issuer / typ | 401 `auth.unauthenticated` |
 
 For the permission enforcement that comes *after* this, see [[Authorization]].

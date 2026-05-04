@@ -276,3 +276,10 @@ impl Permission for FeaturesManage {
         set.has(Self::CODE) || set.is_operator_over_tenants()
     }
 }
+
+/// Permission marker: `echo:invoke`.
+/// No operator bypass — echo is a smoke-test endpoint, not a management operation.
+pub struct EchoInvoke;
+impl Permission for EchoInvoke {
+    const CODE: &'static str = "echo:invoke";
+}

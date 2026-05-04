@@ -13,6 +13,7 @@ use crate::audit::persistence::{AuditRepository, AuditRepositoryPg};
 use crate::audit::service::{AuditRecorder, ListAuditEvents, ListAuditEventsImpl, RecorderError};
 use crate::auth::jwt::encode_access_token;
 use crate::db::run_migrations;
+use crate::features::{EvaluateError, FeatureEvaluator};
 
 /// Returns the admin database URL used to create per-test databases.
 ///
@@ -93,6 +94,24 @@ impl AuditRecorder for BlockingAuditRecorder {
 /// Issue a JWT for tests. Caller owns the permission loading path — see `MockAppStateBuilder`.
 pub fn mint_jwt(secret: &str, issuer: &str, user_id: Uuid, org_id: Uuid, ttl_secs: i64) -> String {
     encode_access_token(secret, issuer, user_id, org_id, ttl_secs).expect("mint_jwt failed")
+}
+
+/// A `FeatureEvaluator` that returns the default `["x-api-key","authorization-bearer"]`
+/// allowlist for every org/slug, without hitting the database.  Used in unit
+/// tests of `AuthLayer` that don't need a real Postgres instance.
+pub struct PermitAllFeatureEvaluator;
+
+#[async_trait::async_trait]
+impl FeatureEvaluator for PermitAllFeatureEvaluator {
+    async fn evaluate(
+        &self,
+        _org: uuid::Uuid,
+        _slug: &str,
+    ) -> Result<serde_json::Value, EvaluateError> {
+        Ok(serde_json::json!(["x-api-key", "authorization-bearer"]))
+    }
+    async fn invalidate(&self, _org: uuid::Uuid, _slug: &str) {}
+    async fn invalidate_all(&self) {}
 }
 
 /// Builder that produces an `AppState` wired with audit infra for tests. Plan 2

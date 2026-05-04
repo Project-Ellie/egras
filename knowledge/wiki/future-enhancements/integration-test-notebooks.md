@@ -1,5 +1,0 @@
-We need jupyter notebooks that encode the narrative of actually using the API in complete scenarios.
-I suggest we a list of scenario detailed and comprehensive narratives and have some python code call the API endpoints in a sequence that would be expected in real life.
-To provide a simple working example before the actual business context is here, we need a trivial echo service. That service would have a dedicated endpoint where it simply returns a json message. We should support GET and POST. This endpoint would have to be enabled for a particular organisation. Hence, when the endpoint is called with a valid API-KEY FOR for that service, it will succeed. That validates the API key feature. 
-With that service in place, The jupyter notebook would initialize egras, create an organisation with a user, create the API key and then an HTTP request would be called. 
-We should have dozens of these scenario tests as a regression test suite. 
