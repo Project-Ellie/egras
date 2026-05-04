@@ -498,10 +498,21 @@ where
     };
 
     let allowed: Vec<String> = match allowlist_value.as_array() {
-        Some(arr) => arr
-            .iter()
-            .filter_map(|v| v.as_str().map(str::to_string))
-            .collect(),
+        Some(arr) => {
+            let total = arr.len();
+            let allowed: Vec<String> = arr
+                .iter()
+                .filter_map(|v| v.as_str().map(str::to_string))
+                .collect();
+            if allowed.len() < total {
+                tracing::warn!(
+                    org_id = %verified.organisation_id,
+                    dropped = total - allowed.len(),
+                    "auth.api_key_headers contains non-string entries; dropping them"
+                );
+            }
+            allowed
+        }
         None => {
             tracing::error!(value = %allowlist_value, "auth.api_key_headers flag is not an array");
             return Ok((StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response());
@@ -509,6 +520,12 @@ where
     };
 
     if !allowed.iter().any(|h| h == header_source.slug()) {
+        tracing::warn!(
+            org_id = %verified.organisation_id,
+            key_id = %verified.key_id,
+            header_source = header_source.slug(),
+            "api key rejected: header source not in org allowlist"
+        );
         return Ok(AppError::Unauthenticated {
             reason: format!("api_key_header_not_allowed:{}", header_source.slug()),
         }

@@ -177,6 +177,14 @@ async fn override_to_x_api_key_only_rejects_authorization_bearer() {
         body["type"], "https://egras.dev/errors/auth.unauthenticated",
         "error type must be auth.unauthenticated"
     );
+    assert!(
+        body["detail"]
+            .as_str()
+            .unwrap_or("")
+            .contains("api_key_header_not_allowed:authorization-bearer"),
+        "expected rejection reason in detail, got {:?}",
+        body["detail"]
+    );
 
     app.stop().await;
 }
@@ -226,6 +234,14 @@ async fn override_to_authorization_bearer_only_rejects_x_api_key() {
     assert_eq!(
         body["type"], "https://egras.dev/errors/auth.unauthenticated",
         "error type must be auth.unauthenticated"
+    );
+    assert!(
+        body["detail"]
+            .as_str()
+            .unwrap_or("")
+            .contains("api_key_header_not_allowed:x-api-key"),
+        "expected rejection reason in detail, got {:?}",
+        body["detail"]
     );
 
     app.stop().await;
@@ -295,6 +311,50 @@ async fn x_api_key_header_cannot_carry_jwt() {
     assert_eq!(
         body["type"], "https://egras.dev/errors/auth.unauthenticated",
         "error type must be auth.unauthenticated"
+    );
+
+    app.stop().await;
+}
+
+// ── Test 6 ────────────────────────────────────────────────────────────────────
+
+/// X-API-Key takes precedence over Authorization: Bearer when both are present.
+#[tokio::test]
+async fn x_api_key_takes_precedence_over_authorization_bearer() {
+    let pool = TestPool::fresh().await.pool;
+    let cfg = test_config();
+    let org = seed_org(&pool, "acme-precedence", "retail").await;
+    let (_sa_id, api_key_plaintext) = seed_sa_with_role(&pool, org, "org_member").await;
+    grant_permission_to_role(&pool, "org_member", "echo:invoke").await;
+
+    // Mint a JWT for a different org admin (this should be ignored since X-API-Key wins).
+    let other_user_id = Uuid::now_v7();
+    let jwt = egras::testing::mint_jwt(&cfg.jwt_secret, &cfg.jwt_issuer, other_user_id, org, 3600);
+
+    let app = TestApp::spawn(pool.clone(), cfg).await;
+    let cli = reqwest::Client::new();
+    let echo_url = format!("{}/api/v1/echo", app.base_url);
+
+    // Send BOTH headers in the same request.
+    let resp = cli
+        .get(&echo_url)
+        .header("x-api-key", &api_key_plaintext)
+        .bearer_auth(&jwt)
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        resp.status(),
+        StatusCode::OK,
+        "X-API-Key must take precedence when both headers present"
+    );
+
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert!(
+        body["key_id"].is_string(),
+        "when X-API-Key path is taken, key_id should be present in response, got: {:?}",
+        body
     );
 
     app.stop().await;

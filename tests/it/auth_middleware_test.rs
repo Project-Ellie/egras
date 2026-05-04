@@ -49,6 +49,18 @@ async fn rejects_missing_authorization_header() {
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    let body_bytes = axum::body::to_bytes(resp.into_body(), 64 * 1024)
+        .await
+        .unwrap();
+    let body: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+    assert!(
+        body["detail"]
+            .as_str()
+            .unwrap_or("")
+            .contains("missing_credentials"),
+        "expected detail to mention missing_credentials, got {:?}",
+        body["detail"]
+    );
 }
 
 #[tokio::test]
