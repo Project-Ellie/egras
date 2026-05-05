@@ -59,7 +59,7 @@ src/
 ├─ errors.rs      AppError → RFC 7807 JSON
 └─ lib.rs         Router assembly (build_app)
 
-migrations/       0001..0007 — schema + seed data
+migrations/       SQLx migrations — schema + seed data (run automatically on startup)
 tests/            Integration tests (persistence / service / HTTP / e2e)
 docs/openapi.json Committed OpenAPI spec (drift-checked in CI)
 ```

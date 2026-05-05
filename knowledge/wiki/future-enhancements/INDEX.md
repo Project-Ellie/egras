@@ -9,7 +9,7 @@ tags:
 
 Catalogue of features that an enterprise-grade B2B application seed *could* ship. Not a roadmap. Each note states scope, rationale, and links to existing wiki where it touches built code.
 
-Goal: Wolfgang picks what matters; we then promote selected notes into specs under `knowledge/specs/` and plans.
+Goal: Wolfgang picks what matters; we then promote selected notes into specs and plans under `docs/superpowers/`.
 
 ## Categories
 
