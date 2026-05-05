@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-**egras** (Enterprise-Ready Rust Application Seed) is a production-shaped foundation for multi-tenant REST API backends: Axum + PostgreSQL + JWT, with RBAC, audit logging, and RFC 7807 error responses. Read `knowledge/specs/2026-04-18-egras-rust-seed-design.md` before any non-trivial work.
+**egras** (Enterprise-Ready Rust Application Seed) is a production-shaped foundation for multi-tenant REST API backends: Axum + PostgreSQL + JWT, with RBAC, audit logging, and RFC 7807 error responses. Read `docs/superpowers/specs/2026-04-18-egras-rust-seed-design.md` before any non-trivial work.
 
 ## Wiki sync (mandatory)
 

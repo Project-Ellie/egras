@@ -140,8 +140,10 @@ docs/
   openapi.json  # Committed OpenAPI spec (CI checks for drift)
 web/            # React + Vite SPA, types generated from docs/openapi.json
 knowledge/
-  wiki/         # Architecture & domain notes
+  wiki/         # Architecture & domain notes (Obsidian vault)
+docs/superpowers/
   specs/        # Design specs
+  plans/        # Implementation plans
 ```
 
 ---
@@ -155,4 +157,4 @@ The codebase follows a two-axis layout:
 
 Permissions are stored in the DB and loaded per request by the auth middleware. The operator org (`EGRAS_OPERATOR_ORG_NAME`) holds wildcard permissions and can act across all tenants.
 
-See `knowledge/specs/2026-04-18-egras-rust-seed-design.md` for the full design rationale.
+See `docs/superpowers/specs/2026-04-18-egras-rust-seed-design.md` for the full design rationale.
