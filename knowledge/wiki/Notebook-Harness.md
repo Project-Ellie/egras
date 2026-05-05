@@ -60,14 +60,14 @@ Prerequisites:
 
 ```bash
 docker-compose up postgres -d
-EGRAS_DATABASE_URL=postgres://egras:egras@localhost:5432/egras_notebook \
+EGRAS_DATABASE_URL=postgres://egras:egras@localhost:15432/egras_notebook \
   cargo run -- seed-admin \
     --email "${EGRAS_OPERATOR_EMAIL:-admin@example.com}" \
     --username admin \
     --password "${EGRAS_OPERATOR_PASSWORD:-changeme123}" \
     --role operator_admin
 
-EGRAS_DATABASE_URL=postgres://egras:egras@localhost:5432/egras_notebook \
+EGRAS_DATABASE_URL=postgres://egras:egras@localhost:15432/egras_notebook \
   EGRAS_CORS_ALLOWED_ORIGINS=http://localhost:8080 \
   EGRAS_JWT_SECRET="$(openssl rand -hex 32)" \
   EGRAS_JWT_ISSUER=egras \

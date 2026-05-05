@@ -111,11 +111,9 @@ impl AppConfig {
                 self.log_format
             );
         }
-        if self.cors_allowed_origins.trim().is_empty() {
-            anyhow::bail!(
-                "EGRAS_CORS_ALLOWED_ORIGINS must be set (comma-separated origins or \"*\")"
-            );
-        }
+        // EGRAS_CORS_ALLOWED_ORIGINS is only required when the HTTP server starts;
+        // CLI subcommands like `seed-admin` don't need it. Validation is enforced
+        // lazily in `lib::build_cors`.
         Ok(())
     }
 }

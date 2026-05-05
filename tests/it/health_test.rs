@@ -36,6 +36,23 @@ async fn health_returns_ok() {
 }
 
 #[tokio::test]
+async fn cors_wildcard_origin_starts_app() {
+    // Regression: tower-http panics if "*" appears in an origin list. Server start
+    // must accept the wildcard form by promoting it to AllowOrigin::any().
+    let tp = TestPool::fresh().await;
+    let mut cfg = test_config();
+    cfg.cors_allowed_origins = "*".into();
+    let app = TestApp::spawn(tp.pool.clone(), cfg).await;
+
+    let resp = reqwest::get(format!("{}/health", app.base_url))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+
+    app.stop().await;
+}
+
+#[tokio::test]
 async fn ready_returns_ok_when_db_reachable() {
     let tp = TestPool::fresh().await;
     let app = TestApp::spawn(tp.pool.clone(), test_config()).await;

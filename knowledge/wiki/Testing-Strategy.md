@@ -193,7 +193,7 @@ let resp = app.client
 
 ```bash
 # Full suite (requires Postgres) — preferred runner
-TEST_DATABASE_URL=postgres://egras:egras@127.0.0.1:5432/postgres \
+TEST_DATABASE_URL=postgres://egras:egras@127.0.0.1:15432/postgres \
   cargo nextest run --all-features
 
 # All tests in one module (file)

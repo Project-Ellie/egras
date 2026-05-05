@@ -133,6 +133,6 @@ def mint_api_key(
 def operator_credentials() -> tuple[str, str]:
     """Returns (email, password) from env vars with documented defaults."""
     return (
-        os.environ.get("EGRAS_OPERATOR_EMAIL", "admin@example.com"),
-        os.environ.get("EGRAS_OPERATOR_PASSWORD", "changeme123"),
+        os.environ.get("EGRAS_OPERATOR_EMAIL", "admin@smurve.ch"),
+        os.environ.get("EGRAS_OPERATOR_PASSWORD", "12345"),
     )
