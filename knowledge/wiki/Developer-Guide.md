@@ -78,6 +78,20 @@ TEST_DATABASE_URL=postgres://egras:egras@127.0.0.1:15432/postgres \
   cargo test --all-features
 ```
 
+### Git pre-push hook (OpenAPI drift)
+
+The repo ships a tracked pre-push hook at `.githooks/pre-push` that mirrors the CI OpenAPI drift check: it runs `egras dump-openapi` and blocks the push if the result differs from `docs/openapi.json`.
+
+Enable it once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The hook needs Postgres up on `localhost:15432` (`docker compose up -d postgres`). Bypass with `git push --no-verify` when needed.
+
+`fmt`, `clippy`, and tests are intentionally **not** in the hook — keep them as the manual pre-push checklist above to avoid multi-minute hook runs.
+
 ---
 
 ## Add a New Use Case
