@@ -32,14 +32,15 @@ Run these in order before executing any notebook or the pytest suite:
 docker-compose up postgres -d
 
 # 2. Seed the operator account
-EGRAS_DATABASE_URL=postgres://postgres:secret@localhost:5432/egras \
+EGRAS_DATABASE_URL=egras://egras:secret@localhost:5432/egras \
+  EGRAS_CORS_ALLOWED_ORIGINS="*" \
   cargo run -- seed-admin \
     --email "${EGRAS_OPERATOR_EMAIL:-admin@example.com}" \
     --username admin \
     --password "${EGRAS_OPERATOR_PASSWORD:-changeme123}"
 
 # 3. Start the server
-EGRAS_DATABASE_URL=postgres://postgres:secret@localhost:5432/egras \
+EGRAS_DATABASE_URL=postgres://egras:egras@localhost:15432/egras \
   EGRAS_CORS_ALLOWED_ORIGINS="*" \
   EGRAS_JWT_SECRET="$(openssl rand -hex 32)" \
   EGRAS_JWT_ISSUER=egras \
