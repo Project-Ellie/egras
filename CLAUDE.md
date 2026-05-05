@@ -20,7 +20,7 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 
 # Run all tests (requires TEST_DATABASE_URL)
-TEST_DATABASE_URL=postgres://postgres:secret@localhost:5432/egras_test \
+TEST_DATABASE_URL=postgres://egras:egras@localhost:15432/postgres \
   cargo test --all-features
 
 # Run a single test
@@ -30,7 +30,7 @@ TEST_DATABASE_URL=... cargo test --all-features <test_name>
 docker-compose up postgres
 
 # Run the server locally
-EGRAS_DATABASE_URL=postgres://postgres:secret@localhost:5432/egras \
+EGRAS_DATABASE_URL=postgres://egras:egras@localhost:15432/egras \
   cargo run
 ```
 

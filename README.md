@@ -113,12 +113,12 @@ Tests require a separate PostgreSQL database. Each test creates an isolated sche
 # Start Postgres (if not already running)
 docker compose up -d postgres
 
-TEST_DATABASE_URL=postgres://egras:egras@localhost:5432/postgres \
+TEST_DATABASE_URL=postgres://egras:egras@localhost:15432/postgres \
   cargo test --all-features
 
 # Recommended runner — better parallelism + output:
 cargo install cargo-nextest --locked
-TEST_DATABASE_URL=postgres://egras:egras@localhost:5432/postgres \
+TEST_DATABASE_URL=postgres://egras:egras@localhost:15432/postgres \
   cargo nextest run --all-features
 ```
 

@@ -18,8 +18,8 @@ pip install -r requirements.txt
 | Variable | Default | Purpose |
 |---|---|---|
 | `EGRAS_BASE_URL` | `http://localhost:8080` | Where the egras server listens |
-| `EGRAS_OPERATOR_EMAIL` | `admin@example.com` | Operator account email |
-| `EGRAS_OPERATOR_PASSWORD` | `changeme123` | Operator account password |
+| `EGRAS_OPERATOR_EMAIL` | `admin@smurve.ch` | Operator account email |
+| `EGRAS_OPERATOR_PASSWORD` | `12345` | Operator account password |
 
 Set these to match whatever was passed to `seed-admin` at startup.
 
@@ -31,13 +31,13 @@ Run these in order before executing any notebook or the pytest suite:
 # 1. Start Postgres
 docker-compose up postgres -d
 
-# 2. Seed the operator account
-EGRAS_DATABASE_URL=egras://egras:secret@localhost:5432/egras \
-  EGRAS_CORS_ALLOWED_ORIGINS="*" \
+# 2. Seed the operator account (CLI subcommand — no CORS / JWT needed)
+EGRAS_DATABASE_URL=postgres://egras:egras@localhost:15432/egras \
+  EGRAS_JWT_SECRET="$(openssl rand -hex 32)" \
   cargo run -- seed-admin \
-    --email "${EGRAS_OPERATOR_EMAIL:-admin@example.com}" \
-    --username admin \
-    --password "${EGRAS_OPERATOR_PASSWORD:-changeme123}"
+    --email "${EGRAS_OPERATOR_EMAIL:-admin@smurve.ch}" \
+    --username admin@smurve.ch \
+    --password "${EGRAS_OPERATOR_PASSWORD:-12345}"
 
 # 3. Start the server
 EGRAS_DATABASE_URL=postgres://egras:egras@localhost:15432/egras \
@@ -46,6 +46,10 @@ EGRAS_DATABASE_URL=postgres://egras:egras@localhost:15432/egras \
   EGRAS_JWT_ISSUER=egras \
   cargo run
 ```
+
+`EGRAS_CORS_ALLOWED_ORIGINS="*"` is the wildcard form (any origin, no
+credentials); use a comma-separated list of explicit origins for tighter
+control.
 
 The server binds to `http://localhost:8080` by default.
 

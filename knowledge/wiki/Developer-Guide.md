@@ -24,12 +24,12 @@ Practical steps for common development tasks. Read [[Architecture]] first if you
 docker-compose up postgres
 ```
 
-This starts a Postgres 16 container at `localhost:5432` with credentials `egras:egras`.
+This starts a Postgres 16 container exposed at `localhost:15432` (mapped to the container's internal `5432`, chosen to avoid clashing with a local production Postgres on the default port) with credentials `egras:egras`.
 
 ### Run the server
 
 ```bash
-EGRAS_DATABASE_URL=postgres://egras:egras@127.0.0.1:5432/egras \
+EGRAS_DATABASE_URL=postgres://egras:egras@127.0.0.1:15432/egras \
 EGRAS_JWT_SECRET=dev-only-32-bytes-of-placeholder-xx \
 EGRAS_CORS_ALLOWED_ORIGINS=http://localhost:3000 \
 EGRAS_LOG_FORMAT=pretty \
@@ -41,7 +41,7 @@ Migrations run automatically on startup.
 ### Seed the first admin user
 
 ```bash
-EGRAS_DATABASE_URL=postgres://egras:egras@127.0.0.1:5432/egras \
+EGRAS_DATABASE_URL=postgres://egras:egras@127.0.0.1:15432/egras \
 EGRAS_JWT_SECRET=dev-only-32-bytes-of-placeholder-xx \
 EGRAS_CORS_ALLOWED_ORIGINS=http://localhost:3000 \
 cargo run -- seed-admin \
@@ -61,7 +61,7 @@ With the server running: [http://localhost:8080/swagger-ui](http://localhost:808
 docker-compose up -d postgres
 
 # Run all tests
-TEST_DATABASE_URL=postgres://egras:egras@127.0.0.1:5432/postgres \
+TEST_DATABASE_URL=postgres://egras:egras@127.0.0.1:15432/postgres \
   cargo test --all-features
 ```
 
@@ -74,7 +74,7 @@ Always run these three before pushing to avoid CI failures:
 ```bash
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
-TEST_DATABASE_URL=postgres://egras:egras@127.0.0.1:5432/postgres \
+TEST_DATABASE_URL=postgres://egras:egras@127.0.0.1:15432/postgres \
   cargo test --all-features
 ```
 
@@ -269,7 +269,7 @@ Follow the same file-per-use-case pattern used in `security/` and `tenants/`.
 After any handler change (new endpoint, changed request/response shape), regenerate:
 
 ```bash
-EGRAS_DATABASE_URL=postgres://egras:egras@127.0.0.1:5432/egras \
+EGRAS_DATABASE_URL=postgres://egras:egras@127.0.0.1:15432/egras \
 EGRAS_JWT_SECRET=dev-only-32-bytes-of-placeholder-xx \
 EGRAS_CORS_ALLOWED_ORIGINS=http://localhost:3000 \
 cargo run -- dump-openapi > docs/openapi.json

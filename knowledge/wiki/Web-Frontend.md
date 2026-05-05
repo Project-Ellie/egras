@@ -52,7 +52,7 @@ web/
 
 ```bash
 # Terminal 1: backend
-EGRAS_DATABASE_URL=postgres://postgres:secret@localhost:5432/egras \
+EGRAS_DATABASE_URL=postgres://egras:egras@localhost:15432/egras \
 EGRAS_CORS_ALLOWED_ORIGINS="http://localhost:3000" \
   cargo run
 

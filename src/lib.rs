@@ -22,7 +22,10 @@ use axum::{routing::get, Json, Router};
 use serde_json::json;
 use sqlx::PgPool;
 use tokio::sync::mpsc;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    cors::{AllowOrigin, Any, CorsLayer},
+    trace::TraceLayer,
+};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -217,16 +220,15 @@ fn build_cors(cfg: &AppConfig) -> anyhow::Result<CorsLayer> {
     if cfg.cors_allowed_origins.trim().is_empty() {
         anyhow::bail!("EGRAS_CORS_ALLOWED_ORIGINS must be set (comma-separated origins or \"*\")");
     }
-    let origins: Vec<axum::http::HeaderValue> = cfg
+
+    let entries: Vec<&str> = cfg
         .cors_allowed_origins
         .split(',')
-        .filter_map(|s| s.trim().parse().ok())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
         .collect();
-    if origins.is_empty() {
-        anyhow::bail!("EGRAS_CORS_ALLOWED_ORIGINS contains no valid origins");
-    }
-    Ok(CorsLayer::new()
-        .allow_origin(origins)
+
+    let layer = CorsLayer::new()
         .allow_methods([
             axum::http::Method::GET,
             axum::http::Method::POST,
@@ -237,5 +239,17 @@ fn build_cors(cfg: &AppConfig) -> anyhow::Result<CorsLayer> {
         .allow_headers([
             axum::http::header::CONTENT_TYPE,
             axum::http::header::AUTHORIZATION,
-        ]))
+        ]);
+
+    // "*" → wildcard via AllowOrigin::any(); tower-http panics if "*" appears in a list.
+    if entries.contains(&"*") {
+        return Ok(layer.allow_origin(AllowOrigin::any()).allow_headers(Any));
+    }
+
+    let origins: Vec<axum::http::HeaderValue> =
+        entries.iter().filter_map(|s| s.parse().ok()).collect();
+    if origins.is_empty() {
+        anyhow::bail!("EGRAS_CORS_ALLOWED_ORIGINS contains no valid origins");
+    }
+    Ok(layer.allow_origin(origins))
 }

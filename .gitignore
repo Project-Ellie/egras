@@ -4,6 +4,9 @@ knowledge/.obsidian
 /target
 Cargo.lock.bak
 .env
+.env~
+.idea
+.venv
 .env.local
 *.swp
 .DS_Store

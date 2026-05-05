@@ -20,7 +20,7 @@ These must be set or the application will fail to start:
 |----------|-------------|
 | `EGRAS_DATABASE_URL` | PostgreSQL connection string, e.g. `postgres://user:pass@host:5432/dbname` |
 | `EGRAS_JWT_SECRET` | HS256 signing secret — **must be ≥ 32 bytes**. Validated on startup. |
-| `EGRAS_CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins, e.g. `https://app.example.com,https://admin.example.com`. Must be set — an empty value will fail startup. |
+| `EGRAS_CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins, e.g. `https://app.example.com,https://admin.example.com`, or `*` for the wildcard (any origin, no credentials). Required only when starting the HTTP server; CLI subcommands like `seed-admin` ignore it. |
 
 ## Optional Variables (with defaults)
 
@@ -44,9 +44,10 @@ These must be set or the application will fail to start:
 
 - `EGRAS_JWT_SECRET` is shorter than 32 bytes
 - `EGRAS_LOG_FORMAT` is not `json` or `pretty`
-- `EGRAS_CORS_ALLOWED_ORIGINS` is empty or whitespace
 
 This is a deliberate fail-fast approach — a misconfigured service should crash loudly at startup rather than behave incorrectly at runtime.
+
+`EGRAS_CORS_ALLOWED_ORIGINS` is checked lazily inside `lib::build_cors`, which only runs when the HTTP server starts. CLI subcommands (`seed-admin`, `dump-openapi`) load `AppConfig` but never construct the CORS layer, so they don't require it.
 
 ## AppConfig Struct
 
@@ -73,17 +74,18 @@ pub struct AppConfig {
 
 `EGRAS_CORS_ALLOWED_ORIGINS` is a comma-separated list of origin strings. Each is parsed as an `http::HeaderValue`. Invalid entries are silently dropped; if the resulting list is empty after parsing, `build_cors()` returns an error.
 
+The literal `*` is the wildcard form: when present, `build_cors()` switches to `AllowOrigin::any()` (and `Any` headers) instead of building a list. tower-http panics when `*` appears as a literal entry in an origin list, so the wildcard cannot be combined with explicit origins — pick one form or the other. Wildcard mode disables credentialed requests by spec.
+
 Allowed methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`.  
-Allowed headers: `Content-Type`, `Authorization`.
+Allowed headers (non-wildcard mode): `Content-Type`, `Authorization`.
 
 ## Bootstrap: seed-admin
 
 After running migrations for the first time, you need to create the first operator admin user:
 
 ```bash
-EGRAS_DATABASE_URL=postgres://egras:egras@localhost:5432/egras \
+EGRAS_DATABASE_URL=postgres://egras:egras@localhost:15432/egras \
 EGRAS_JWT_SECRET=<your-32+-byte-secret> \
-EGRAS_CORS_ALLOWED_ORIGINS=http://localhost:3000 \
 ./egras seed-admin \
   --email admin@example.com \
   --username admin \
@@ -103,7 +105,7 @@ Once the seed admin exists, all subsequent user registration is done via the RES
 ## Example .env for local development
 
 ```bash
-EGRAS_DATABASE_URL=postgres://egras:egras@127.0.0.1:5432/egras
+EGRAS_DATABASE_URL=postgres://egras:egras@127.0.0.1:15432/egras
 EGRAS_JWT_SECRET=dev-only-32-bytes-of-placeholder-xx
 EGRAS_BIND_ADDRESS=127.0.0.1:8080
 EGRAS_LOG_FORMAT=pretty
