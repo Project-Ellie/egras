@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# OpenAPI drift check — blocks the push if `docs/openapi.json` is out of sync
+# with what `egras dump-openapi` produces from current source.
+#
+# Mirrors the CI check in .github/workflows/ci.yml. Escape hatch: `git push --no-verify`.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+: "${EGRAS_DATABASE_URL:=postgres://egras:egras@localhost:15432/egras}"
+: "${EGRAS_JWT_SECRET:=dev-only-32-bytes-of-placeholder-xx}"
+export EGRAS_DATABASE_URL EGRAS_JWT_SECRET
+
+echo "pre-push: checking docs/openapi.json drift…"
+
+tmp="$(mktemp -t egras-openapi-XXXXXX.json)"
+trap 'rm -f "$tmp"' EXIT
+
+if ! cargo run --quiet -- dump-openapi >"$tmp" 2>/dev/null; then
+    echo "pre-push: ❌ failed to run \`cargo run -- dump-openapi\` (is postgres up on :15432?)" >&2
+    echo "pre-push:    bypass with: git push --no-verify" >&2
+    exit 1
+fi
+
+if ! diff -q docs/openapi.json "$tmp" >/dev/null; then
+    echo "pre-push: ❌ docs/openapi.json is out of date" >&2
+    echo "pre-push:    regenerate with: cargo run -- dump-openapi > docs/openapi.json" >&2
+    exit 1
+fi
+
+echo "pre-push: ✅ openapi up to date"
