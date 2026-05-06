@@ -24,7 +24,7 @@ Recurring errors must produce *one* signal, not thousands. A failing dependency 
 - [[Error-Handling]]: every `AppError` already has a stable slug — make it the primary fingerprint axis.
 - [[Distributed-Tracing]]: attach trace id to each occurrence for one-click drill-in.
 - [[Notification-Channels]]: alerts route through the same fan-out as user notifications.
-- [[Background-Jobs]]: job failures fingerprint identically to HTTP errors.
+- [[Jobs]]: job failures fingerprint identically to HTTP errors.
 
 **Why it matters for B2B:** alert fatigue is the leading cause of missed real incidents. A seed that ships with this discipline pre-wired is a meaningful differentiator.
 
