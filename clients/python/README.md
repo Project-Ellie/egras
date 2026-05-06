@@ -6,12 +6,24 @@ with the server.
 
 ## Install (editable, for the egras monorepo)
 
+From the repo root:
+
 ```bash
-pip install -e clients/python[dev]
+pip install -e 'clients/python[dev]'
 ```
 
-The notebooks under `notebooks/scenarios/` install the package via
-`notebooks/requirements.txt`.
+The single quotes matter under zsh — unquoted, `[dev]` is read as a glob
+character class and the install fails with `zsh: no matches found`.
+
+If you only need the runtime client (no test/dev extras), drop `[dev]`:
+
+```bash
+pip install -e clients/python
+```
+
+The notebooks under `notebooks/scenarios/` don't need this step — they install
+the client editable via `notebooks/requirements.txt` (`pip install -r
+requirements.txt` from `notebooks/`).
 
 ## Usage
 
