@@ -31,3 +31,61 @@ if ! diff -q docs/openapi.json "$tmp" >/dev/null; then
 fi
 
 echo "pre-push: ✅ openapi up to date"
+
+# --- Python client drift -------------------------------------------------
+# Verify (a) every operationId in the spec has a wrapper under
+# clients/python/egras_client/api/, and (b) clients/python/egras_client/models.py
+# is in sync with the spec.
+#
+# Both checks need a Python interpreter; the models.py check additionally
+# needs `datamodel-code-generator`. We probe candidate interpreters in
+# order — EGRAS_PYTHON (explicit override), then the conventional repo
+# venvs — and use the first one that has the package. We hard-fail (not
+# warn) if none does: a quietly-skipped drift check defeats the purpose.
+
+CLIENT_DIR="$REPO_ROOT/clients/python"
+if [ -d "$CLIENT_DIR" ]; then
+    candidates=()
+    [ -n "${EGRAS_PYTHON:-}" ] && candidates+=("$EGRAS_PYTHON")
+    candidates+=(
+        "$REPO_ROOT/notebooks/.venv/bin/python"
+        "$REPO_ROOT/clients/python/.venv/bin/python"
+    )
+
+    PY=""
+    for candidate in "${candidates[@]}"; do
+        if [ -x "$candidate" ] && "$candidate" -c "import datamodel_code_generator" >/dev/null 2>&1; then
+            PY="$candidate"
+            break
+        fi
+    done
+
+    if [ -z "$PY" ]; then
+        echo "pre-push: ❌ datamodel-code-generator not available in any candidate interpreter:" >&2
+        for candidate in "${candidates[@]}"; do
+            echo "pre-push:      $candidate" >&2
+        done
+        echo "pre-push:    install with:" >&2
+        echo "pre-push:      python3 -m pip install -e '$CLIENT_DIR[dev]'" >&2
+        echo "pre-push:    or point EGRAS_PYTHON at an interpreter that has it." >&2
+        echo "pre-push:    bypass (not recommended): git push --no-verify" >&2
+        exit 1
+    fi
+
+    echo "pre-push: using $PY for client drift checks"
+
+    echo "pre-push: checking egras_client wrapper drift…"
+    if ! "$PY" "$CLIENT_DIR/scripts/check_drift.py"; then
+        echo "pre-push:    add a wrapper for the missing operationId(s) under" >&2
+        echo "pre-push:    clients/python/egras_client/api/*.py and re-push." >&2
+        exit 1
+    fi
+
+    echo "pre-push: checking egras_client/models.py drift…"
+    if ! "$PY" "$CLIENT_DIR/scripts/regen.py" --check 2>/dev/null; then
+        echo "pre-push: ❌ egras_client/models.py is stale" >&2
+        echo "pre-push:    regenerate with: $PY $CLIENT_DIR/scripts/regen.py" >&2
+        exit 1
+    fi
+    echo "pre-push: ✅ egras_client up to date"
+fi
