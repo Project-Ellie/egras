@@ -289,7 +289,7 @@ EGRAS_CORS_ALLOWED_ORIGINS=http://localhost:3000 \
 cargo run -- dump-openapi > docs/openapi.json
 ```
 
-The CI checks that the committed spec matches what `dump-openapi` generates — see [[CI-and-Deployment#OpenAPI drift check]].
+The CI checks that the committed spec matches what `dump-openapi` generates — see [[CI-and-Deployment#Step 8 — OpenAPI drift check]].
 
 ---
 
@@ -299,7 +299,7 @@ The CI checks that the committed spec matches what `dump-openapi` generates — 
 > `cargo fmt --all -- --check` runs in CI. It's strict about import ordering and line length. Run `cargo fmt --all` before pushing.
 
 > [!warning] Don't use raw SQL in handlers
-> Handlers must not hold a `PgPool`. All DB access goes through repository traits on `AppState`. See [[Architecture#Dependency Injection via AppState]].
+> Handlers must not hold a `PgPool`. All DB access goes through repository traits on `AppState`. See [[Architecture#Dependency Injection via `AppState`]].
 
 > [!warning] Audit events are fire-and-forget
 > `state.audit_recorder.record(event).await` — the `await` is for the channel send, not the DB write. Don't rely on the event being in the DB immediately after the call (use `BlockingAuditRecorder` in tests — see [[Testing-Strategy#BlockingAuditRecorder]]).

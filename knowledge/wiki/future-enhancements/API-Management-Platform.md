@@ -12,7 +12,7 @@ tags:
 Umbrella capability that ties together how external API consumers are onboarded, governed, observed, and billed. Not one feature — a coordinated set.
 
 **Components (each is its own note):**
-- [[Service-Accounts-and-API-Keys]] — credentials, scopes, rotation
+- [[Service-Accounts]] — credentials, scopes, rotation
 - [[Rate-Limiting-and-Quotas]] — per-key/per-org budgets, plan tiers
 - [[API-Versioning-and-Deprecation]] — sunset policy, version headers
 - [[Idempotency-Keys]] — safe retry contract
