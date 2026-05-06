@@ -1,3 +1,8 @@
+# Notebook scenarios use the egras-client library, installed editable from the
+# in-repo path so a `cargo run -- dump-openapi > docs/openapi.json` followed by
+# `python clients/python/scripts/regen.py` is picked up immediately.
+-e ../clients/python
+
 requests==2.32.3
 jupyter==1.1.1
 nbmake==1.5.4

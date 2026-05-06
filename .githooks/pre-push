@@ -31,3 +31,35 @@ if ! diff -q docs/openapi.json "$tmp" >/dev/null; then
 fi
 
 echo "pre-push: ✅ openapi up to date"
+
+# --- Python client drift -------------------------------------------------
+# Verify (a) every operationId in the spec has a wrapper under
+# clients/python/egras_client/api/, and (b) clients/python/egras_client/models.py
+# is in sync with the spec. Both checks are pure-Python and don't need the
+# server running — but they DO need datamodel-code-generator on the same
+# interpreter that runs the script. Skip cleanly if it isn't installed.
+
+CLIENT_DIR="$REPO_ROOT/clients/python"
+if [ -d "$CLIENT_DIR" ]; then
+    PY="${EGRAS_PYTHON:-python3}"
+
+    echo "pre-push: checking egras_client wrapper drift…"
+    if ! "$PY" "$CLIENT_DIR/scripts/check_drift.py"; then
+        echo "pre-push:    add a wrapper for the missing operationId(s) under" >&2
+        echo "pre-push:    clients/python/egras_client/api/*.py and re-push." >&2
+        exit 1
+    fi
+
+    if "$PY" -c "import datamodel_code_generator" 2>/dev/null; then
+        echo "pre-push: checking egras_client/models.py drift…"
+        if ! "$PY" "$CLIENT_DIR/scripts/regen.py" --check 2>/dev/null; then
+            echo "pre-push: ❌ egras_client/models.py is stale" >&2
+            echo "pre-push:    regenerate with: $PY $CLIENT_DIR/scripts/regen.py" >&2
+            exit 1
+        fi
+        echo "pre-push: ✅ egras_client up to date"
+    else
+        echo "pre-push: ⚠ datamodel-code-generator not installed in '$PY'; skipping models.py drift check"
+        echo "pre-push:   install with: $PY -m pip install -e '$CLIENT_DIR[dev]'"
+    fi
+fi
